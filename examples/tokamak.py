@@ -1,7 +1,8 @@
 
 
 import openmc
-import matplotlib.pyplot as plt
+from openmc_geometry_plot import plot_axis_slice
+
 
 # surfaces
 central_column_surface = openmc.ZCylinder(r=100) # note the new surface type
@@ -28,11 +29,37 @@ universe = openmc.Universe(cells=[central_column_cell, firstwall_cell,
 my_geometry = openmc.Geometry(universe)
 
 
-from openmc_geometry_plot import plot_axis_slice
+# plots the geometry
+plot = plot_axis_slice(
+    geometry=my_geometry,
+    view_direction='z',
+    backend='matplotlib'
+)
 
+plot.show()
+
+# plots the geometry
 plot = plot_axis_slice(
     geometry=my_geometry,
     view_direction='x',
+    backend='matplotlib'
+)
+plot.show()
+
+plot = plot_axis_slice(
+    geometry=my_geometry,
+    view_direction='y',
+    backend='matplotlib'
+)
+
+plot = plot_axis_slice(
+    geometry=my_geometry,
+    plot_left=400,
+    plot_right=600,
+    plot_top=-200,
+    plot_bottom=100,
+    view_direction='y',
+    backend='matplotlib'
 )
 
 plot.show()

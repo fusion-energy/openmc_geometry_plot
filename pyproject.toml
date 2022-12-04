@@ -3,7 +3,7 @@ requires = ["setuptools >= 65.4.0", "setuptools_scm[toml]>=7.0.5"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "openmc_geomtry_plot"
+name = "openmc_geometry_plot"
 authors = [
   { name="Jonathan Shimwell", email="mail@jshimwell.com" },
 ]
@@ -26,7 +26,7 @@ dynamic = ["version"]
 
 
 [tool.setuptools_scm]
-write_to = "src/openmc_geomtry_plot/_version.py"
+write_to = "src/openmc_geometry_plot/_version.py"
 
 
 [project.optional-dependencies]
@@ -35,8 +35,8 @@ tests = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/fusion-energy/openmc_geomtry_plot"
-"Bug Tracker" = "https://github.com/fusion-energy/openmc_geomtry_plot/issues"
+"Homepage" = "https://github.com/fusion-energy/openmc_geometry_plot"
+"Bug Tracker" = "https://github.com/fusion-energy/openmc_geometry_plot/issues"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
