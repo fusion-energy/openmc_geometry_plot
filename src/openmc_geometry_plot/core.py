@@ -91,12 +91,10 @@ def plot_axis_slice(
         if plot_top is None:
             plot_top = bb[1][1]
             check_for_inf_value(plot_top)
-            print("plot_top", plot_top)
 
         if plot_bottom is None:
             plot_bottom = bb[0][1]
             check_for_inf_value(plot_bottom)
-            print("plot_bottom", plot_bottom)
 
         if slice_value is None:
             slice_value = (bb[0][2] + bb[1][2]) / 2
@@ -107,7 +105,6 @@ def plot_axis_slice(
 
     plot_width = abs(plot_left - plot_right)
     plot_height = abs(plot_bottom - plot_top)
-    print("plot_height", plot_height)
 
     aspect_ratio = plot_height / plot_width
     pixels_up = int(pixels_across * aspect_ratio)
@@ -147,24 +144,27 @@ def plot_axis_slice(
 
     if backend == "matplotlib":
 
-        from matplotlib import colors
-        cmap = plt.cm.jet
-        cmaplist = [cmap(i) for i in range(cmap.N)]
-        cmaplist[0] = (1., 1., 1., 0.)
-        cmap = colors.LinearSegmentedColormap.from_list('Custom cmap', cmaplist, cmap.N)
-        bounds = list(geometry.get_all_cells().keys())  + [0]
-        print(bounds)
-        bounds.sort()
-        print(bounds)
-        norm = colors.BoundaryNorm(bounds, cmap.N)
+        # TODO color picker not working for 2 colors
+        # from matplotlib import colors
+        # cmap = plt.cm.jet
+        # cmaplist = [cmap(i) for i in range(cmap.N)]
+        # cmaplist.append((1., 1., 1., 0.))
+        # cmap = colors.LinearSegmentedColormap.from_list(
+        #     'Custom cmap', cmaplist, cmap.N
+        # )
+        # bounds = list(geometry.get_all_cells().keys())  + [0]
+        # print(bounds)
+        # bounds.sort()
+        # print(bounds)
+        # norm = colors.BoundaryNorm(bounds, cmap.N)
 
         plot = plt.imshow(
             cell_ids,
             extent=(plot_left, plot_right, plot_bottom, plot_top),
             interpolation='none',
             # origin='lower', # this flips the axis incorrectly
-            cmap=cmap,
-            norm=norm,
+            # cmap=cmap,
+            # norm=norm,
         )
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
