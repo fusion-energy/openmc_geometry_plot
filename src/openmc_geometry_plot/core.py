@@ -169,7 +169,7 @@ def plot_axis_slice(
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
         plt.title(title)
-        return plt
+        return plot
 
     elif backend == "plotly":
 
