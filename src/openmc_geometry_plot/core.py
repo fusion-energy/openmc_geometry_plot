@@ -206,10 +206,10 @@ def plot_axis_slice(
             scaleanchor="x",
             scaleratio=1,
         )
+        return plot
 
     else:
         raise ValueError(
             f"Supported backend are 'plotly' and 'matplotlib', not {backend}"
         )
 
-    return plot

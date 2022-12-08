@@ -16,8 +16,48 @@ def save_uploadedfile(uploadedfile):
     return st.success(f"Saved File to {uploadedfile.name}")
 
 
+def header():
+    """This section writes out the page header common to all tabs"""
+
+    st.set_page_config(
+        page_title="OpenMC Geometry Plot",
+        page_icon="⚛",
+        layout="wide",
+    )
+
+    hide_streamlit_style = """
+                <style>
+                #MainMenu {visibility: hidden;}
+                footer {
+                    visibility: hidden;
+                    }
+                </style>
+                """
+    st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
+    st.write(
+        """
+            # OpenMC geometry plot
+
+            ### ⚛ A geometry plotting user interface for OpenMC.
+
+            🐍 Run this app locally with Python ```pip install openmc_geometry_plot``` then run with ```openmc_geometry_plot```
+
+            ⚙ Produce MatPlotLib or Plotly plots in batch with the 🐍 [Python API](https://github.com/fusion-energy/openmc_geometry_plot/tree/master/examples)
+
+            💾 Raise a feature request, report and issue or make a contribution on [GitHub](https://github.com/fusion-energy/openmc_geometry_plot)
+
+            📧 Email feedback to mail@jshimwell.com
+
+            🔗 This package forms part of a more [comprehensive openmc plotting](https://github.com/fusion-energy/openmc_plot) package where geometry, tallies, slices, etc can be plotted and is hosted on [xsplot.com](https://www.xsplot.com/) .
+        """
+    )
+    st.write("<br>", unsafe_allow_html=True)
+
+
 def main():
 
+    header()
 
     st.write(
         """
@@ -73,98 +113,160 @@ def main():
 
         col1, col2 = st.columns([1, 3])
 
-        view_direction = col1.selectbox(label="view_direction", options=("z", "x", "y"), index=0)
-        backend = col1.selectbox(label="backend", options=("matplotlib", "plotly"), index=0)
+        view_direction = col1.selectbox(
+            label="View direction",
+            options=("z", "x", "y"),
+            index=0,
+            key='geometry_view_direction',
+            help='Setting the direction of view automatically sets the horizontal and vertical axis used for the plot.'
+        )
+        backend = col1.selectbox(
+            label="Ploting backend",
+            options=("matplotlib", "plotly"),
+            index=0,
+            key='geometry_ploting_backend',
+            help='Create png images with MatPlotLib or HTML plots with Plotly'
+        )
+        plot_left, plot_right = None, None
+        plot_bottom, plot_top = None, None
+        x_min, x_max = None, None
+        y_min, y_max = None, None
 
-        if view_direction == 'x':
-             x_offset = col1.slider(
-                label="left and right values",
-                min_value=float(bb[0][0]),
-                max_value=float(bb[1][0]),
-                value=(float((bb[0][0] + bb[1][0]) / 3), float((bb[0][0] + bb[1][0]) / 2)),
+        if view_direction in ['z']:
+
+            # x axis is x values
+            if np.isinf(bb[0][0]) or np.isinf(bb[1][0]):
+                x_min = col1.number_input(label='minimum vertical axis value', key='x_min')
+                x_max = col1.number_input(label='maximum vertical axis value', key='x_max')
+            else:
+                x_min = float(bb[0][0])
+                x_max = float(bb[1][0])
+            # if :
+            # else:
+
+            # y axis is y values
+            if np.isinf(bb[0][1]) or np.isinf(bb[1][1]):
+                y_min = col1.number_input(label='minimum vertical axis value', key='y_min')
+                y_max = col1.number_input(label='maximum vertical axis value', key='y_max')
+            else:
+                y_min = float(bb[0][1])
+                y_max = float(bb[1][1])
+            # if :
+            # else:
+
+        if view_direction in ['y']:
+
+            # x axis is x values
+            if np.isinf(bb[0][0]) or np.isinf(bb[1][0]):
+                x_min = col1.number_input(label='minimum horizontal axis value', key='x_min')
+                x_max = col1.number_input(label='maximum horizontal axis value', key='x_max')
+            else:
+                x_min = float(bb[0][0])
+                x_max = float(bb[1][0])
+            # if :
+            # else:
+
+            # y axis is z values
+            if np.isinf(bb[0][2]) or np.isinf(bb[1][2]):
+                y_min = col1.number_input(label='minimum vertical axis value', key='y_min')
+                y_max = col1.number_input(label='maximum vertical axis value', key='y_max')
+            else:
+                y_min = float(bb[0][2])
+                y_max = float(bb[1][2])
+            # if :
+            # else:
+
+        if view_direction in ['x']:
+
+            # x axis is y values
+            if np.isinf(bb[0][1]) or np.isinf(bb[1][1]):
+                x_min = col1.number_input(label='minimum vertical axis value')
+                x_max = col1.number_input(label='maximum vertical axis value')
+            else:
+                x_min = float(bb[0][1])
+                x_max = float(bb[1][1])
+            # if :
+            # else:
+
+            # y axis is z values
+            if np.isinf(bb[0][2]) or np.isinf(bb[1][2]):
+                y_min = col1.number_input(label='minimum vertical axis value', key='y_min')
+                y_max = col1.number_input(label='maximum vertical axis value', key='y_max')
+            else:
+                y_min = float(bb[0][1])
+                y_max = float(bb[1][1])
+            # if :
+            # else:
+
+        if x_min and x_max:
+            plot_left, plot_right = col1.slider(
+                label="Left and right values for the horizontal axis",
+                min_value=x_min,
+                max_value=x_max,
+                value=(x_min, x_max),
+                key='left_right_slider',
+                help='Set the lowest visible value and highest visible value on the horizontal axis'
             )
 
-        # # # bb may have -inf or inf values in, these break the slider bar automatic scaling
-        # if np.isinf(bb[0][0]) or np.isinf(bb[1][0]):
-        #     msg = "Infinity value found in X axis, axis length can't be automatically found. Input desired Z axis length"
-        #     x_width = col1.number_input(msg, value=1.0)
-        #     x_offset = col1.number_input("X axis offset")
-        # else:
-        #     x_width = abs(bb[0][0] - bb[1][0])
-        #     x_offset = col1.slider(
-        #         label="X axis offset",
-        #         min_value=float(bb[0][0]),
-        #         max_value=float(bb[1][0]),
-        #         value=float((bb[0][0] + bb[1][0]) / 2),
-        #     )
+        if y_min and y_max:
+            plot_bottom, plot_top = col1.slider(
+                label="Bottom and top values for the vertical axis",
+                min_value=y_min,
+                max_value=y_max,
+                value=(y_min, y_max),
+                key='bottom_top_slider',
+                help='Set the lowest visible value and highest visible value on the vertical axis'
+            )
 
-        # if np.isinf(bb[0][1]) or np.isinf(bb[1][1]):
-        #     msg = "Infinity value found in Y axis, axis length can't be automatically found. Input desired Z axis length"
-        #     y_width = col1.number_input(msg, value=1.0)
-        #     y_offset = col1.number_input("Y axis offset")
-        # else:
-        #     y_width = abs(bb[0][1] - bb[1][1])
-        #     y_offset = col1.slider(
-        #         label="Y axis offset",
-        #         min_value=float(bb[0][1]),
-        #         max_value=float(bb[1][1]),
-        #         value=float((bb[0][1] + bb[1][1]) / 2),
-        #     )
-
-        # if np.isinf(bb[0][2]) or np.isinf(bb[1][2]):
-        #     msg = "Infinity value found in Z axis, axis length can't be automatically found. Input desired Z axis length"
-        #     z_width = col1.number_input(msg, value=1.0)
-        #     z_offset = col1.number_input("Z axis offset")
-        # else:
-        #     z_width = abs(bb[0][2] - bb[1][2])
-        #     z_offset = col1.slider(
-        #         label="Z axis offset",
-        #         min_value=float(bb[0][2]),
-        #         max_value=float(bb[1][2]),
-        #         value=float((bb[0][2] + bb[1][2]) / 2),
-        #     )
-        # left = 
-        
-        pixels_across = int(col1.number_input('pixels_across', value=200))
-
-        geom_plt = plot_axis_slice(
-            geometry=my_geometry,
-            plot_left=-100,
-            plot_right=100,
-            plot_top=-200,
-            plot_bottom=200,
-            view_direction=view_direction,
-            pixels_across=pixels_across,
-            backend=backend,
+        pixels_across = col1.number_input(
+            label='Number of horizontal pixels',
+            value=200,
+            help='Increasing this value increases the image resolution but also requires longer to create the image'
         )
 
-        if backend == 'matplotlib':
+        title = col1.text_input('Plot title',
+            help='Optionally set your own title for the plot',
+            value=f'Slice through OpenMC geometry with view direction {view_direction}'
+        )
 
-            geom_plt.figure.savefig("openmc_plot_geometry_image.png")
+        if plot_left and plot_right and plot_top and plot_bottom:
+            geom_plt = plot_axis_slice(
+                geometry=my_geometry,
+                plot_left=plot_left,
+                plot_right=plot_right,
+                plot_top=plot_top,
+                plot_bottom=plot_bottom,
+                view_direction=view_direction,
+                pixels_across=pixels_across,
+                backend=backend,
+                title=title
+            )
 
-            col2.image("openmc_plot_geometry_image.png", use_column_width="always")
+            if backend == 'matplotlib':
 
-            with open("openmc_plot_geometry_image.png", "rb") as file:
-                col1.download_button(
-                    label="Download image",
-                    data=file,
-                    file_name="openmc_plot_geometry_image.png",
-                    mime="image/png"
-                )
-        else:
+                geom_plt.figure.savefig("openmc_plot_geometry_image.png")
+                col2.pyplot(plt)
+                # col2.image("openmc_plot_geometry_image.png", use_column_width="always")
 
-            geom_plt.write_html('openmc_plot_geometry_image.html')
+                with open("openmc_plot_geometry_image.png", "rb") as file:
+                    col1.download_button(
+                        label="Download image",
+                        data=file,
+                        file_name="openmc_plot_geometry_image.png",
+                        mime="image/png"
+                    )
+            else:
 
-            with open("openmc_plot_geometry_image.html", "rb") as file:
-                col1.download_button(
-                    label="Download image",
-                    data=file,
-                    file_name="openmc_plot_geometry_image.html",
-                    mime=None
-                )
-            col1.plotly_chart(figure, use_container_width=True, height=800)
+                geom_plt.write_html('openmc_plot_geometry_image.html')
 
-
+                with open("openmc_plot_geometry_image.html", "rb") as file:
+                    col1.download_button(
+                        label="Download image",
+                        data=file,
+                        file_name="openmc_plot_geometry_image.html",
+                        mime=None
+                    )
+                col2.plotly_chart(geom_plt, use_container_width=True)
 
 
 if __name__ == "__main__":
