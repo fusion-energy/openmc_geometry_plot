@@ -40,3 +40,6 @@ tests = [
 
 [tool.setuptools]
 package-dir = {"" = "src"}
+
+[project.scripts]
+openmc_geometry_plot = "openmc_geometry_plot.launch:main"
