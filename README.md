@@ -1,7 +1,8 @@
 Create axis slice plots of OpenMC geomtry:
   - Interactive plots with hovertext :speech_balloon:
   - Specifiy the zoom :mag:
-  - Color by materials or cells (working progress) :art:
+  - Color by materials or cells :art:
+  - Outline by materials or cells :pencil2:
   - Switch ploting backends between 📉 MatPlotLib and 📈 Plotly
 
 This package is deployed on [xsplot.com](https://www.xsplot.com) as part of the ```openmc_plot``` suite of plotting apps
