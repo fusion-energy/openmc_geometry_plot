@@ -1,7 +1,5 @@
-
 import openmc
 from openmc_geometry_plot import plot_axis_slice
-
 
 
 material_1 = openmc.Material()
@@ -25,19 +23,13 @@ cell_1.fill = material_1
 cell_2 = openmc.Cell(region=region_2)
 cell_2.fill = material_2
 
-universe = openmc.Universe(
-    cells=[
-        cell_1, cell_2
-    ]
-)
+universe = openmc.Universe(cells=[cell_1, cell_2])
 my_geometry = openmc.Geometry(universe)
 
 
 for backend in ["matplotlib", "plotly"]:
 
-    plot = plot_axis_slice(
-        geometry=my_geometry, view_direction="z", backend=backend
-    )
+    plot = plot_axis_slice(geometry=my_geometry, view_direction="z", backend=backend)
 
     plot.show()
 

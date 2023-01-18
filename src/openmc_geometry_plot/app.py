@@ -117,86 +117,108 @@ def main():
             label="View direction",
             options=("z", "x", "y"),
             index=0,
-            key='geometry_view_direction',
-            help='Setting the direction of view automatically sets the horizontal and vertical axis used for the plot.'
+            key="geometry_view_direction",
+            help="Setting the direction of view automatically sets the horizontal and vertical axis used for the plot.",
         )
         backend = col1.selectbox(
             label="Ploting backend",
             options=("matplotlib", "plotly"),
             index=0,
-            key='geometry_ploting_backend',
-            help='Create png images with MatPlotLib or HTML plots with Plotly'
+            key="geometry_ploting_backend",
+            help="Create png images with MatPlotLib or HTML plots with Plotly",
+        )
+        outline = col1.selectbox(
+            label="Outline",
+            options=("cells", "materials", None),
+            index=0,
+            key="outline",
+            help="Allows an outline to be drawn around the cells or materials, select None for no outline",
+        )
+        color_by = col1.selectbox(
+            label="Color by",
+            options=("cells", "materials"),
+            index=0,
+            key="color_by",
+            help="Should the plot be colored by material or by cell",
         )
         plot_left, plot_right = None, None
         plot_bottom, plot_top = None, None
         x_min, x_max = None, None
         y_min, y_max = None, None
 
-        if view_direction in ['z']:
+        if view_direction in ["z"]:
 
             # x axis is x values
             if np.isinf(bb[0][0]) or np.isinf(bb[1][0]):
-                x_min = col1.number_input(label='minimum vertical axis value', key='x_min')
-                x_max = col1.number_input(label='maximum vertical axis value', key='x_max')
+                x_min = col1.number_input(
+                    label="minimum vertical axis value", key="x_min"
+                )
+                x_max = col1.number_input(
+                    label="maximum vertical axis value", key="x_max"
+                )
             else:
                 x_min = float(bb[0][0])
                 x_max = float(bb[1][0])
-            # if :
-            # else:
 
             # y axis is y values
             if np.isinf(bb[0][1]) or np.isinf(bb[1][1]):
-                y_min = col1.number_input(label='minimum vertical axis value', key='y_min')
-                y_max = col1.number_input(label='maximum vertical axis value', key='y_max')
+                y_min = col1.number_input(
+                    label="minimum vertical axis value", key="y_min"
+                )
+                y_max = col1.number_input(
+                    label="maximum vertical axis value", key="y_max"
+                )
             else:
                 y_min = float(bb[0][1])
                 y_max = float(bb[1][1])
-            # if :
-            # else:
 
-        if view_direction in ['y']:
+        if view_direction in ["y"]:
 
             # x axis is x values
             if np.isinf(bb[0][0]) or np.isinf(bb[1][0]):
-                x_min = col1.number_input(label='minimum horizontal axis value', key='x_min')
-                x_max = col1.number_input(label='maximum horizontal axis value', key='x_max')
+                x_min = col1.number_input(
+                    label="minimum horizontal axis value", key="x_min"
+                )
+                x_max = col1.number_input(
+                    label="maximum horizontal axis value", key="x_max"
+                )
             else:
                 x_min = float(bb[0][0])
                 x_max = float(bb[1][0])
-            # if :
-            # else:
 
             # y axis is z values
             if np.isinf(bb[0][2]) or np.isinf(bb[1][2]):
-                y_min = col1.number_input(label='minimum vertical axis value', key='y_min')
-                y_max = col1.number_input(label='maximum vertical axis value', key='y_max')
+                y_min = col1.number_input(
+                    label="minimum vertical axis value", key="y_min"
+                )
+                y_max = col1.number_input(
+                    label="maximum vertical axis value", key="y_max"
+                )
             else:
                 y_min = float(bb[0][2])
                 y_max = float(bb[1][2])
-            # if :
-            # else:
 
-        if view_direction in ['x']:
+        if view_direction in ["x"]:
 
             # x axis is y values
             if np.isinf(bb[0][1]) or np.isinf(bb[1][1]):
-                x_min = col1.number_input(label='minimum vertical axis value')
-                x_max = col1.number_input(label='maximum vertical axis value')
+                x_min = col1.number_input(label="minimum vertical axis value")
+                x_max = col1.number_input(label="maximum vertical axis value")
             else:
                 x_min = float(bb[0][1])
                 x_max = float(bb[1][1])
-            # if :
-            # else:
 
             # y axis is z values
             if np.isinf(bb[0][2]) or np.isinf(bb[1][2]):
-                y_min = col1.number_input(label='minimum vertical axis value', key='y_min')
-                y_max = col1.number_input(label='maximum vertical axis value', key='y_max')
+                y_min = col1.number_input(
+                    label="minimum vertical axis value", key="y_min"
+                )
+                y_max = col1.number_input(
+                    label="maximum vertical axis value", key="y_max"
+                )
             else:
                 y_min = float(bb[0][1])
                 y_max = float(bb[1][1])
-            # if :
-            # else:
 
         if x_min and x_max:
             plot_left, plot_right = col1.slider(
@@ -204,8 +226,8 @@ def main():
                 min_value=x_min,
                 max_value=x_max,
                 value=(x_min, x_max),
-                key='left_right_slider',
-                help='Set the lowest visible value and highest visible value on the horizontal axis'
+                key="left_right_slider",
+                help="Set the lowest visible value and highest visible value on the horizontal axis",
             )
 
         if y_min and y_max:
@@ -214,19 +236,20 @@ def main():
                 min_value=y_min,
                 max_value=y_max,
                 value=(y_min, y_max),
-                key='bottom_top_slider',
-                help='Set the lowest visible value and highest visible value on the vertical axis'
+                key="bottom_top_slider",
+                help="Set the lowest visible value and highest visible value on the vertical axis",
             )
 
         pixels_across = col1.number_input(
-            label='Number of horizontal pixels',
-            value=200,
-            help='Increasing this value increases the image resolution but also requires longer to create the image'
+            label="Number of horizontal pixels",
+            value=400,
+            help="Increasing this value increases the image resolution but also requires longer to create the image",
         )
 
-        title = col1.text_input('Plot title',
-            help='Optionally set your own title for the plot',
-            value=f'Slice through OpenMC geometry with view direction {view_direction}'
+        title = col1.text_input(
+            "Plot title",
+            help="Optionally set your own title for the plot",
+            value=f"Slice through OpenMC geometry with view direction {view_direction}",
         )
 
         if plot_left and plot_right and plot_top and plot_bottom:
@@ -239,10 +262,12 @@ def main():
                 view_direction=view_direction,
                 pixels_across=pixels_across,
                 backend=backend,
-                title=title
+                title=title,
+                outline=outline,
+                color_by=color_by,
             )
 
-            if backend == 'matplotlib':
+            if backend == "matplotlib":
 
                 geom_plt.figure.savefig("openmc_plot_geometry_image.png")
                 col2.pyplot(plt)
@@ -253,18 +278,18 @@ def main():
                         label="Download image",
                         data=file,
                         file_name="openmc_plot_geometry_image.png",
-                        mime="image/png"
+                        mime="image/png",
                     )
             else:
 
-                geom_plt.write_html('openmc_plot_geometry_image.html')
+                geom_plt.write_html("openmc_plot_geometry_image.html")
 
                 with open("openmc_plot_geometry_image.html", "rb") as file:
                     col1.download_button(
                         label="Download image",
                         data=file,
                         file_name="openmc_plot_geometry_image.html",
-                        mime=None
+                        mime=None,
                     )
                 col2.plotly_chart(geom_plt, use_container_width=True)
 

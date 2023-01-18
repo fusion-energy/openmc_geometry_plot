@@ -6,9 +6,9 @@ import plotly.graph_objects as go
 
 def check_for_inf_value(var_name, view_direction):
     if np.isinf(var_name):
-        print(f'view direction {view_direction}\n')
+        # print(f'view direction {view_direction}\n')
         msg = f"{var_name} can't be obtained from the bounding box as boundary is at inf. {var_name} value must be specified by user"
-        
+
         raise ValueError(msg)
 
 
@@ -23,6 +23,8 @@ def plot_axis_slice(
     pixels_across=500,
     backend="plotly",
     title=None,
+    outline="cells",
+    color_by="materials",
 ):
 
     bb = geometry.bounding_box
@@ -115,6 +117,7 @@ def plot_axis_slice(
     material_ids = []
     for plot_y in np.linspace(plot_top, plot_bottom, pixels_up):
         row_cell_ids = []
+        row_material_ids = []
         for plot_x in np.linspace(plot_left, plot_right, pixels_across):
 
             if view_direction == "z":
@@ -129,20 +132,19 @@ def plot_axis_slice(
                 row_cell_ids.append(id)
                 if found[1].fill is not None:
                     mat = found[1].fill
-                    material_ids.append(str(mat.id))
+                    row_material_ids.append(mat.id)
                 else:
-                    material_ids.append("void")
+                    row_material_ids.append(0)  # "void")
             else:
                 row_cell_ids.append(0)
-                material_ids.append("void")
+                row_material_ids.append(0)  # "void")
+        material_ids.append(row_material_ids)
         cell_ids.append(row_cell_ids)
 
     if title is None:
         # consider adding a link, does not work well in mpl
         # title = 'Made with <a href="https://github.com/fusion-energy/openmc_geometry_plot/">openmc-geometry-plot</a>'
-        title = (
-            f"Slice through OpenMC geometry with view direction of {view_direction}"
-        )
+        title = f"Slice through OpenMC geometry with view direction of {view_direction}"
 
     if backend == "matplotlib":
 
@@ -160,10 +162,20 @@ def plot_axis_slice(
         # print(bounds)
         # norm = colors.BoundaryNorm(bounds, cmap.N)
 
+        # outline_levels = np.unique(geometry.ids)
+
+        if color_by == "cells":
+            plot_data = cell_ids
+        elif color_by == "materials":
+            plot_data = material_ids
+        else:
+            msg = f"only materials or cells are acceptable values for color_by, not {color_by}"
+            raise ValueError(msg)
+
         plot = plt.imshow(
-            cell_ids,
+            plot_data,
             extent=(plot_left, plot_right, plot_bottom, plot_top),
-            interpolation='none',
+            interpolation="none",
             # origin='lower', # this flips the axis incorrectly
             # cmap=cmap,
             # norm=norm,
@@ -171,6 +183,25 @@ def plot_axis_slice(
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
         plt.title(title)
+
+        if outline is not None:
+            if outline == "cells":
+                outline_data = cell_ids
+                levels = np.unique([cell for cell in geometry.get_all_cells()])
+            if outline == "materials":
+                levels = np.unique(
+                    [mat for mat in geometry.get_all_materials() if mat != "void"]
+                )
+                outline_data = material_ids
+            plt.contour(
+                outline_data,
+                origin="upper",
+                colors="k",
+                linestyles="solid",
+                levels=levels,
+                extent=(plot_left, plot_right, plot_bottom, plot_top),
+            )
+
         return plot
 
     elif backend == "plotly":
@@ -214,4 +245,3 @@ def plot_axis_slice(
         raise ValueError(
             f"Supported backend are 'plotly' and 'matplotlib', not {backend}"
         )
-
