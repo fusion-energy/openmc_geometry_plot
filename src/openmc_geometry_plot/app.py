@@ -95,7 +95,7 @@ def main():
         else:
             set_mat_ids = ()
 
-        my_mats = []
+        my_mats = openmc.Materials()
         for mat_id in set_mat_ids:
             new_mat = openmc.Material()
             new_mat.id = mat_id
