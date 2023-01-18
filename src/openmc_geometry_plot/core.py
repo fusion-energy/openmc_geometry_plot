@@ -4,9 +4,11 @@ import numpy as np
 import plotly.graph_objects as go
 
 
-def check_for_inf_value(var_name):
+def check_for_inf_value(var_name, view_direction):
     if np.isinf(var_name):
+        print(f'view direction {view_direction}\n')
         msg = f"{var_name} can't be obtained from the bounding box as boundary is at inf. {var_name} value must be specified by user"
+        
         raise ValueError(msg)
 
 
@@ -30,23 +32,23 @@ def plot_axis_slice(
 
         if plot_left is None:
             plot_left = bb[0][1]
-            check_for_inf_value(plot_left)
+            check_for_inf_value(plot_left, view_direction)
 
         if plot_right is None:
             plot_right = bb[1][1]
-            check_for_inf_value(plot_right)
+            check_for_inf_value(plot_right, view_direction)
 
         if plot_top is None:
             plot_top = bb[1][2]
-            check_for_inf_value(plot_top)
+            check_for_inf_value(plot_top, view_direction)
 
         if plot_bottom is None:
             plot_bottom = bb[0][2]
-            check_for_inf_value(plot_bottom)
+            check_for_inf_value(plot_bottom, view_direction)
 
         if slice_value is None:
             slice_value = (bb[0][0] + bb[1][0]) / 2
-            check_for_inf_value(slice_value)
+            check_for_inf_value(slice_value, view_direction)
 
         xlabel = "Y [cm]"
         ylabel = "Z [cm]"
@@ -56,23 +58,23 @@ def plot_axis_slice(
 
         if plot_left is None:
             plot_left = bb[0][0]
-            check_for_inf_value(plot_left)
+            check_for_inf_value(plot_left, view_direction)
 
         if plot_right is None:
             plot_right = bb[1][0]
-            check_for_inf_value(plot_right)
+            check_for_inf_value(plot_right, view_direction)
 
         if plot_top is None:
             plot_top = bb[1][2]
-            check_for_inf_value(plot_top)
+            check_for_inf_value(plot_top, view_direction)
 
         if plot_bottom is None:
             plot_bottom = bb[0][2]
-            check_for_inf_value(plot_bottom)
+            check_for_inf_value(plot_bottom, view_direction)
 
         if slice_value is None:
             slice_value = (bb[0][1] + bb[1][1]) / 2
-            check_for_inf_value(slice_value)
+            check_for_inf_value(slice_value, view_direction)
 
         xlabel = "X [cm]"
         ylabel = "Z [cm]"
@@ -82,23 +84,23 @@ def plot_axis_slice(
 
         if plot_left is None:
             plot_left = bb[0][0]
-            check_for_inf_value(plot_left)
+            check_for_inf_value(plot_left, view_direction)
 
         if plot_right is None:
             plot_right = bb[1][0]
-            check_for_inf_value(plot_right)
+            check_for_inf_value(plot_right, view_direction)
 
         if plot_top is None:
             plot_top = bb[1][1]
-            check_for_inf_value(plot_top)
+            check_for_inf_value(plot_top, view_direction)
 
         if plot_bottom is None:
             plot_bottom = bb[0][1]
-            check_for_inf_value(plot_bottom)
+            check_for_inf_value(plot_bottom, view_direction)
 
         if slice_value is None:
             slice_value = (bb[0][2] + bb[1][2]) / 2
-            check_for_inf_value(slice_value)
+            check_for_inf_value(slice_value, view_direction)
 
         xlabel = "X [cm]"
         ylabel = "Y [cm]"
