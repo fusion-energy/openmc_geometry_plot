@@ -99,7 +99,39 @@ def get_axis_labels(view_direction):
 
 class Geometry(openmc.Geometry):
 
-    def get_slice_of_material_ids(self,view_direction,slice_value, plot_top, plot_bottom, pixels_up, plot_left, plot_right, pixels_across):
+    def get_slice_of_material_ids(
+        self,
+        view_direction,
+        slice_value=None,
+        plot_top=None,
+        plot_bottom=None,
+        plot_left=None,
+        plot_right=None,
+        pixels_across=200,
+    ):
+        bb = self.bounding_box
+
+        if plot_left is None:
+            plot_left = get_plot_left(bb, view_direction)
+
+        if plot_right is None:
+            plot_right = get_plot_right(bb, view_direction)
+
+        if plot_bottom is None:
+            plot_bottom = get_plot_bottom(bb, view_direction)
+
+        if plot_top is None:
+            plot_top = get_plot_top(bb, view_direction)
+
+        if slice_value is None:
+            slice_value = get_mid_slice_value(bb, view_direction)
+
+        plot_width = abs(plot_left - plot_right)
+        plot_height = abs(plot_bottom - plot_top)
+
+        aspect_ratio = plot_height / plot_width
+        pixels_up = int(pixels_across * aspect_ratio)
+
         material_ids = []
         for plot_y in np.linspace(plot_top, plot_bottom, pixels_up):
             row_material_ids = []
@@ -290,15 +322,31 @@ class Geometry(openmc.Geometry):
     def get_outline_contour(
         self,
         outline_data,
-        plot_left,
-        plot_right,
-        plot_bottom,
-        plot_top
+        view_direction,
+        plot_left=None,
+        plot_right=None,
+        plot_bottom=None,
+        plot_top=None
     ):
 
+        bb = self.bounding_box
+
+        if plot_left is None:
+            plot_left = get_plot_left(bb, view_direction)
+
+        if plot_right is None:
+            plot_right = get_plot_right(bb, view_direction)
+
+        if plot_bottom is None:
+            plot_bottom = get_plot_bottom(bb, view_direction)
+
+        if plot_top is None:
+            plot_top = get_plot_top(bb, view_direction)
+
         levels = np.unique([item for sublist in outline_data for item in sublist])
+        print('levels',levels)
         # levels = set(np.array(outline_data).flatten())
-        return plt.contour(
+        plot = plt.contour(
             outline_data,
             origin="upper",
             colors="k",
@@ -306,6 +354,7 @@ class Geometry(openmc.Geometry):
             levels=levels,
             extent=(plot_left, plot_right, plot_bottom, plot_top),
         )
+        return plot
 
 
 openmc.Geometry = Geometry
