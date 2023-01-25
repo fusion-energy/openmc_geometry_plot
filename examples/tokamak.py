@@ -4,7 +4,7 @@
 
 
 import openmc
-from openmc_geometry_plot import plot_axis_slice
+import openmc_geometry_plot # adds plot_axis_slice to openmc.Geometry
 
 
 breeder_material = openmc.Material()
@@ -91,25 +91,26 @@ universe = openmc.Universe(
 my_geometry = openmc.Geometry(universe)
 
 
-for backend in ["matplotlib", "plotly"]:
+for backend in ["matplotlib"]:#, "plotly"]:
 
     for view_direction in ["z", "x", "y"]:
-        # plots the geometry
-        plot = plot_axis_slice(
-            geometry=my_geometry, view_direction=view_direction, backend=backend
+
+        plot = my_geometry.plot_axis_slice(
+            view_direction=view_direction,
+            backend=backend
         )
 
-        plot.show()
+        plot.figure.savefig(f'test{view_direction}.png')
 
-    # a single zoomed in plot
-    plot = plot_axis_slice(
-        geometry=my_geometry,
-        plot_left=400,
-        plot_right=600,
-        plot_top=-200,
-        plot_bottom=100,
-        view_direction="y",
-        backend=backend,
-    )
+    # # a single zoomed in plot
+    # plot = plot_axis_slice(
+    #     geometry=my_geometry,
+    #     plot_left=400,
+    #     plot_right=600,
+    #     plot_top=-200,
+    #     plot_bottom=100,
+    #     view_direction="y",
+    #     backend=backend,
+    # )
 
-    plot.show()
+    # plot.show()
