@@ -10,64 +10,33 @@ def check_for_inf_value(var_name, view_direction):
 
         raise ValueError(msg)
 
-def get_plot_left(bb, view_direction):
 
-    if view_direction == "x":
-        plot_edge = bb[0][1]
-    elif view_direction == "y":
-        plot_edge = bb[0][0]
-    elif view_direction == "z":
-        plot_edge = bb[0][0]
-    else:
-        raise ValueError('view_direction must be "x", "y" or "z"')
+def get_side_extent(bb, side, view_direction):
 
-    check_for_inf_value(plot_edge, view_direction)
-    return plot_edge
-
-
-def get_plot_right(bb, view_direction):
-
-    if view_direction == "x":
-        plot_edge = bb[1][1]
-    elif view_direction == "y":
-        plot_edge = bb[1][0]
-    elif view_direction == "z":
-        plot_edge = bb[1][0]
-    else:
-        raise ValueError('view_direction must be "x", "y" or "z"')
-
-    check_for_inf_value(plot_edge, view_direction)
-    return plot_edge
+    avail_extents = {}
+    avail_extents[('left', 'x')]= bb[0][1]
+    avail_extents[('right', 'x')]= bb[1][1]
+    avail_extents[('top', 'x')]= bb[1][2]
+    avail_extents[('bottom', 'x')]= bb[0][2]
+    avail_extents[('left', 'y')]= bb[0][0]
+    avail_extents[('right', 'y')]= bb[1][0]
+    avail_extents[('top', 'y')]= bb[1][2]
+    avail_extents[('bottom', 'y')]= bb[0][2]
+    avail_extents[('left', 'z')]= bb[0][0]
+    avail_extents[('right', 'z')]= bb[1][0]
+    avail_extents[('top', 'z')]= bb[1][1]
+    avail_extents[('bottom', 'z')]= bb[0][1]
+    return avail_extents[(side,view_direction)]
 
 
-def get_plot_top(bb, view_direction):
+def get_mpl_plot_extent(bb, view_direction):
+    x_min = get_side_extent(bb, 'left', view_direction)
+    x_max = get_side_extent(bb, 'right', view_direction)
+    y_min = get_side_extent(bb, 'bottom', view_direction)
+    y_max = get_side_extent(bb, 'top', view_direction)
 
-    if view_direction == "x":
-        plot_edge = bb[1][2]
-    elif view_direction == "y":
-        plot_edge = bb[1][2]
-    elif view_direction == "z":
-        plot_edge = bb[1][1]
-    else:
-        raise ValueError('view_direction must be "x", "y" or "z"')
-
-    check_for_inf_value(plot_edge, view_direction)
-    return plot_edge
-
-
-def get_plot_bottom(bb, view_direction):
-
-    if view_direction == "x":
-        plot_edge = bb[0][2]
-    elif view_direction == "y":
-        plot_edge = bb[0][2]
-    elif view_direction == "z":
-        plot_edge = bb[0][1]
-    else:
-        raise ValueError('view_direction must be "x", "y" or "z"')
-
-    check_for_inf_value(plot_edge, view_direction)
-    return plot_edge
+    return (x_min, x_max, y_min, y_max)
+    
 
 
 def get_mid_slice_value(bb, view_direction):
@@ -83,6 +52,7 @@ def get_mid_slice_value(bb, view_direction):
 
     check_for_inf_value(plot_edge, view_direction)
     return plot_edge
+
 
 def get_axis_labels(view_direction):
     if view_direction == "x":
@@ -111,17 +81,20 @@ class Geometry(openmc.Geometry):
     ):
         bb = self.bounding_box
 
+        if view_direction not in ["x", "y", "z"]:
+            raise ValueError('view_direction must be "x", "y" or "z"')
+
         if plot_left is None:
-            plot_left = get_plot_left(bb, view_direction)
+            plot_left = get_side_extent(bb, 'left', view_direction)
 
         if plot_right is None:
-            plot_right = get_plot_right(bb, view_direction)
+            plot_right = get_side_extent(bb, 'right', view_direction)
 
         if plot_bottom is None:
-            plot_bottom = get_plot_bottom(bb, view_direction)
+            plot_bottom = get_side_extent(bb, 'bottom', view_direction)
 
         if plot_top is None:
-            plot_top = get_plot_top(bb, view_direction)
+            plot_top = get_side_extent(bb, 'top', view_direction)
 
         if slice_value is None:
             slice_value = get_mid_slice_value(bb, view_direction)
@@ -194,16 +167,16 @@ class Geometry(openmc.Geometry):
         bb = self.bounding_box
 
         if plot_left is None:
-            plot_left = get_plot_left(bb, view_direction)
+            plot_left = get_side_extent(bb, 'left', view_direction)
 
         if plot_right is None:
-            plot_right = get_plot_right(bb, view_direction)
+            plot_right = get_side_extent(bb, 'right', view_direction)
 
         if plot_bottom is None:
-            plot_bottom = get_plot_bottom(bb, view_direction)
+            plot_bottom = get_side_extent(bb, 'bottom', view_direction)
 
         if plot_top is None:
-            plot_top = get_plot_top(bb, view_direction)
+            plot_top = get_side_extent(bb, 'top', view_direction)
 
         if slice_value is None:
             slice_value = get_mid_slice_value(bb, view_direction)
