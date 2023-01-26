@@ -305,26 +305,26 @@ class Geometry(openmc.Geometry):
         bb = self.bounding_box
 
         if plot_left is None:
-            plot_left = get_plot_left(bb, view_direction)
+            plot_left = get_side_extent(bb, 'left', view_direction)
 
         if plot_right is None:
-            plot_right = get_plot_right(bb, view_direction)
+            plot_right = get_side_extent(bb, 'right', view_direction)
 
         if plot_bottom is None:
-            plot_bottom = get_plot_bottom(bb, view_direction)
+            plot_bottom = get_side_extent(bb, 'bottom', view_direction)
 
         if plot_top is None:
-            plot_top = get_plot_top(bb, view_direction)
+            plot_top = get_side_extent(bb, 'top', view_direction)
 
         levels = np.unique([item for sublist in outline_data for item in sublist])
-        print('levels',levels)
-        # levels = set(np.array(outline_data).flatten())
+
         plot = plt.contour(
             outline_data,
             origin="upper",
             colors="k",
             linestyles="solid",
             levels=levels,
+            linewidths=0.5,
             extent=(plot_left, plot_right, plot_bottom, plot_top),
         )
         return plot
