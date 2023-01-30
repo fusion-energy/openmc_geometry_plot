@@ -4,7 +4,7 @@
 
 
 import openmc
-import openmc_geometry_plot # adds plot_axis_slice to openmc.Geometry
+import openmc_geometry_plot  # adds plot_axis_slice to openmc.Geometry
 
 
 breeder_material = openmc.Material()
@@ -13,16 +13,15 @@ breeder_material.set_density("g/cm3", 0.01)
 
 copper_material = openmc.Material()
 copper_material.set_density("g/cm3", 0.01)
-copper_material.add_element("Li", 1.0)
+copper_material.add_element("Cu", 1.0)
 
 eurofer_material = openmc.Material()
 eurofer_material.set_density("g/cm3", 0.01)
-eurofer_material.add_element("Li", 1)
+eurofer_material.add_element("Fe", 1)
 
 # surfaces
 central_sol_surface = openmc.ZCylinder(r=100)
 central_shield_outer_surface = openmc.ZCylinder(r=110)
-# plasma_surface = openmc.ZTorus(x0=200,y0=200)
 port_hole = openmc.Sphere(r=60, x0=500)
 upper_port_hole = openmc.Sphere(r=100, z0=500)
 vessel_inner_surface = openmc.Sphere(r=500)
@@ -77,8 +76,8 @@ breeder_blanket_region = (
 breeder_blanket_cell = openmc.Cell(region=breeder_blanket_region)
 breeder_blanket_cell.fill = breeder_material
 
-universe = openmc.Universe(
-    cells=[
+my_geometry = openmc.Geometry(
+    [
         central_sol_cell,
         central_shield_cell,
         inner_vessel_cell,
@@ -88,29 +87,33 @@ universe = openmc.Universe(
         upper_port_hole_cell,
     ]
 )
-my_geometry = openmc.Geometry(universe)
 
 
-for backend in ["matplotlib"]:#, "plotly"]:
+# example code for plotting materials of the geometry with an outline
 
-    for view_direction in ["z", "x", "y"]:
+import numpy as np
+import matplotlib.pylab as plt
 
-        plot = my_geometry.plot_axis_slice(
-            view_direction=view_direction,
-            backend=backend
-        )
+my_geometry.view_direction = 'x'
+data_slice = my_geometry.get_slice_of_material_ids()
 
-        plot.figure.savefig(f'test{view_direction}.png')
+plt.imshow(
+    data_slice,
+    extent=my_geometry.get_mpl_plot_extent(),
+    interpolation="none",
+)
 
-    # # a single zoomed in plot
-    # plot = plot_axis_slice(
-    #     geometry=my_geometry,
-    #     plot_left=400,
-    #     plot_right=600,
-    #     plot_top=-200,
-    #     plot_bottom=100,
-    #     view_direction="y",
-    #     backend=backend,
-    # )
+# gets unique levels for outlines contour plot
+levels = np.unique([item for sublist in data_slice for item in sublist])
 
-    # plot.show()
+plt.contour(
+    data_slice,
+    origin="upper",
+    colors="k",
+    linestyles="solid",
+    levels=levels,
+    linewidths=0.5,
+    extent=my_geometry.get_mpl_plot_extent(),
+)
+
+plt.show()

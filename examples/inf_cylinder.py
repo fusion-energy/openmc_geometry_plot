@@ -1,5 +1,4 @@
 import openmc
-from openmc_geometry_plot import plot_axis_slice
 
 
 material_1 = openmc.Material()
@@ -27,25 +26,42 @@ universe = openmc.Universe(cells=[cell_1, cell_2])
 my_geometry = openmc.Geometry(universe)
 
 
-for backend in ["matplotlib", "plotly"]:
 
-    plot = plot_axis_slice(geometry=my_geometry, view_direction="z", backend=backend)
+# example code for plotting materials of the geometry with an outline
 
-    plot.show()
+import numpy as np
+import openmc_geometry_plot  # adds data slicing functions to openmc.Geometry
+import matplotlib.pylab as plt
 
-for backend in ["matplotlib", "plotly"]:
+my_geometry.view_direction = 'x'
+plot_left=-100
+plot_right=100
+plot_bottom=200
+plot_top=-200
+data_slice = my_geometry.get_slice_of_material_ids(
+    plot_left=plot_left,
+    plot_right=plot_right,
+    plot_bottom=plot_bottom,
+    plot_top=plot_top,
+)
 
-    for view_direction in ["x", "y"]:
+plt.imshow(
+    data_slice,
+    extent=(plot_left, plot_right, plot_bottom, plot_top),
+    interpolation="none",
+)
 
-        # a single zoomed in plot, ranges must be specified as the geometry is not fully bound
-        plot = plot_axis_slice(
-            geometry=my_geometry,
-            plot_left=-100,
-            plot_right=100,
-            plot_top=-200,
-            plot_bottom=200,
-            view_direction=view_direction,
-            backend=backend,
-        )
+# gets unique levels for outlines contour plot
+levels = np.unique([item for sublist in data_slice for item in sublist])
 
-        plot.show()
+plt.contour(
+    data_slice,
+    origin="upper",
+    colors="k",
+    linestyles="solid",
+    levels=levels,
+    linewidths=0.5,
+    extent=(plot_left, plot_right, plot_bottom, plot_top),
+)
+
+plt.show()
