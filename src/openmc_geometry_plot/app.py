@@ -7,7 +7,7 @@ import streamlit as st
 from pylab import *
 
 
-from openmc_geometry_plot import plot_axis_slice
+import openmc_geometry_plot  # adds extra functions to openmc.Geometry
 
 
 def save_uploadedfile(uploadedfile):
@@ -242,7 +242,7 @@ def main():
 
         pixels_across = col1.number_input(
             label="Number of horizontal pixels",
-            value=400,
+            value=500,
             help="Increasing this value increases the image resolution but also requires longer to create the image",
         )
 
@@ -253,23 +253,52 @@ def main():
         )
 
         if plot_left and plot_right and plot_top and plot_bottom:
-            geom_plt = plot_axis_slice(
-                geometry=my_geometry,
-                plot_left=plot_left,
-                plot_right=plot_right,
-                plot_top=plot_top,
-                plot_bottom=plot_bottom,
-                view_direction=view_direction,
-                pixels_across=pixels_across,
-                backend=backend,
-                title=title,
-                outline=outline,
-                color_by=color_by,
-            )
+            my_geometry.view_direction = view_direction
+
+            if color_by == 'cells':
+                data_slice = my_geometry.get_slice_of_cell_ids(
+                    plot_left=plot_left,
+                    plot_right=plot_right,
+                    plot_top=plot_top,
+                    plot_bottom=plot_bottom,
+                    pixels_across=pixels_across,
+                )
+            elif color_by == 'materials':
+                data_slice = my_geometry.get_slice_of_material_ids(
+                    plot_left=plot_left,
+                    plot_right=plot_right,
+                    plot_top=plot_top,
+                    plot_bottom=plot_bottom,
+                    pixels_across=pixels_across,
+                )
 
             if backend == "matplotlib":
 
-                geom_plt.figure.savefig("openmc_plot_geometry_image.png")
+                plt.imshow(
+                    data_slice,
+                    extent=my_geometry.get_mpl_plot_extent(),
+                    interpolation="none",
+                )
+
+                (xlabel, ylabel) = my_geometry.get_axis_labels()
+                plt.xlabel(xlabel)
+                plt.ylabel(ylabel)
+                plt.title(title)
+
+                if outline is not None:
+                    # gets unique levels for outlines contour plot
+                    levels = np.unique([item for sublist in data_slice for item in sublist])
+                    plt.contour(
+                        data_slice,
+                        origin="upper",
+                        colors="k",
+                        linestyles="solid",
+                        levels=levels,
+                        linewidths=0.5,
+                        extent=my_geometry.get_mpl_plot_extent(),
+                    )
+
+                plt.savefig("openmc_plot_geometry_image.png")
                 col2.pyplot(plt)
                 # col2.image("openmc_plot_geometry_image.png", use_column_width="always")
 
@@ -281,17 +310,53 @@ def main():
                         mime="image/png",
                     )
             else:
+                pass
 
-                geom_plt.write_html("openmc_plot_geometry_image.html")
+    #         plot = go.Figure(
+    #             data=go.Heatmap(
+    #                 z=cell_ids,
+    #                 colorscale="viridis",
+    #                 x0=plot_left,
+    #                 dx=abs(plot_left - plot_right) / (len(cell_ids[0]) - 1),
+    #                 y0=plot_bottom,
+    #                 dy=abs(plot_bottom - plot_top) / (len(cell_ids) - 1),
+    #                 # colorbar=dict(title=dict(side="right", text=cbar_label)),
+    #                 # text = material_ids,
+    #                 hovertemplate=
+    #                 # 'material ID = %{z}<br>'+
+    #                 "Cell ID = %{z}<br>" +
+    #                 # '<br>%{text}<br>'+
+    #                 xlabel[:2].title()
+    #                 + ": %{x} cm<br>"
+    #                 + ylabel[:2].title()
+    #                 + ": %{y} cm<br>",
+    #             ),
+    #         )
 
-                with open("openmc_plot_geometry_image.html", "rb") as file:
-                    col1.download_button(
-                        label="Download image",
-                        data=file,
-                        file_name="openmc_plot_geometry_image.html",
-                        mime=None,
-                    )
-                col2.plotly_chart(geom_plt, use_container_width=True)
+    #         plot.update_layout(
+    #             xaxis={"title": xlabel},
+    #             # reversed autorange is required to avoid image needing rotation/flipping in plotly
+    #             yaxis={"title": ylabel, "autorange": "reversed"},
+    #             title=title,
+    #             autosize=False,
+    #             height=800,
+    #         )
+    #         plot.update_yaxes(
+    #             scaleanchor="x",
+    #             scaleratio=1,
+    #         )
+    #         return plot
+
+                # geom_plt.write_html("openmc_plot_geometry_image.html")
+
+                # with open("openmc_plot_geometry_image.html", "rb") as file:
+                #     col1.download_button(
+                #         label="Download image",
+                #         data=file,
+                #         file_name="openmc_plot_geometry_image.html",
+                #         mime=None,
+                #     )
+                # col2.plotly_chart(geom_plt, use_container_width=True)
 
 
 if __name__ == "__main__":

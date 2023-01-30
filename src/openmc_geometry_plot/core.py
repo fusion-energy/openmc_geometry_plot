@@ -104,6 +104,13 @@ def get_slice_of_material_ids(
     aspect_ratio = plot_height / plot_width
     pixels_up = int(pixels_across * aspect_ratio)
 
+    # todo look into parrallel version of this
+    # import multiprocessing.pool
+    # global pool
+    # pool = multiprocessing.Pool(4)
+    # pool = multiprocessing.Semaphore(multiprocessing.cpu_count() -1) 
+    # out1, out2, out3 = zip(*pool.map(calc_stuff, range(0, 10 * offset, offset)))
+
     material_ids = []
     for plot_y in np.linspace(plot_top, plot_bottom, pixels_up):
         row_material_ids = []
@@ -182,185 +189,6 @@ def get_slice_of_cell_ids(
                 row_cell_ids.append(0)
         cell_ids.append(row_cell_ids)
     return cell_ids
-
-    # def plot_axis_slice(
-    #     self,
-    #     view_direction="x",
-    #     plot_left=None,
-    #     plot_right=None,
-    #     plot_top=None,
-    #     plot_bottom=None,
-    #     slice_value=None,
-    #     pixels_across=200,
-    #     backend="plotly",
-    #     title=None,
-    #     color_by="cells",
-    #     outline='cells'
-    # ):
-
-    #     bb = self.bounding_box
-
-    #     if plot_left is None:
-    #         plot_left = get_side_extent(bb, 'left', view_direction)
-
-    #     if plot_right is None:
-    #         plot_right = get_side_extent(bb, 'right', view_direction)
-
-    #     if plot_bottom is None:
-    #         plot_bottom = get_side_extent(bb, 'bottom', view_direction)
-
-    #     if plot_top is None:
-    #         plot_top = get_side_extent(bb, 'top', view_direction)
-
-    #     if slice_value is None:
-    #         slice_value = get_mid_slice_value(bb, view_direction)
-
-    #     xlabel, ylabel = get_axis_labels(view_direction)
-
-    #     plot_width = abs(plot_left - plot_right)
-    #     plot_height = abs(plot_bottom - plot_top)
-
-    #     aspect_ratio = plot_height / plot_width
-    #     pixels_up = int(pixels_across * aspect_ratio)
-
-    #     if 'materials' in [color_by, outline]:
-    #         material_ids = self.get_slice_of_material_ids(view_direction, slice_value, plot_top, plot_bottom, pixels_up, plot_left, plot_right, pixels_across)
-    #     if 'cells' in [color_by, outline]:
-    #         cell_ids = self.get_slice_of_cell_ids(view_direction, slice_value, plot_top, plot_bottom, pixels_up, plot_left, plot_right, pixels_across)
-
-    #     if title is None:
-    #         # consider adding a link, does not work well in mpl
-    #         # title = 'Made with <a href="https://github.com/fusion-energy/openmc_geometry_plot/">openmc-geometry-plot</a>'
-    #         title = f"Slice through OpenMC geometry with view direction of {view_direction}"
-
-    #     if backend == "matplotlib":
-
-    #         # TODO color picker not working for 2 colors
-    #         # from matplotlib import colors
-    #         # cmap = plt.cm.jet
-    #         # cmaplist = [cmap(i) for i in range(cmap.N)]
-    #         # cmaplist.append((1., 1., 1., 0.))
-    #         # cmap = colors.LinearSegmentedColormap.from_list(
-    #         #     'Custom cmap', cmaplist, cmap.N
-    #         # )
-    #         # bounds = list(geometry.get_all_cells().keys())  + [0]
-    #         # print(bounds)
-    #         # bounds.sort()
-    #         # print(bounds)
-    #         # norm = colors.BoundaryNorm(bounds, cmap.N)
-
-    #         # outline_levels = np.unique(geometry.ids)
-
-    #         if color_by == "cells":
-    #             plot_data = cell_ids
-    #         elif color_by == "materials":
-    #             plot_data = material_ids
-    #         else:
-    #             msg = f"only materials or cells are acceptable values for color_by, not {color_by}"
-    #             raise ValueError(msg)
-
-    #         plot = plt.imshow(
-    #             plot_data,
-    #             extent=(plot_left, plot_right, plot_bottom, plot_top),
-    #             interpolation="none",
-    #             # origin='lower', # this flips the axis incorrectly
-    #             # cmap=cmap,
-    #             # norm=norm,
-    #         )
-    #         plt.xlabel(xlabel)
-    #         plt.ylabel(ylabel)
-    #         plt.title(title)
-
-    #         if outline is not None:
-
-    #             if outline == "cells":
-    #                 outline_data = cell_ids
-    #             if outline == "materials":
-    #                 outline_data = material_ids
-    #             self.get_outline_contour(
-    #                 outline, outline_data,
-    #                 plot_left, plot_right, plot_bottom, plot_top)
-
-    #         return plot
-
-    #     elif backend == "plotly":
-
-    #         plot = go.Figure(
-    #             data=go.Heatmap(
-    #                 z=cell_ids,
-    #                 colorscale="viridis",
-    #                 x0=plot_left,
-    #                 dx=abs(plot_left - plot_right) / (len(cell_ids[0]) - 1),
-    #                 y0=plot_bottom,
-    #                 dy=abs(plot_bottom - plot_top) / (len(cell_ids) - 1),
-    #                 # colorbar=dict(title=dict(side="right", text=cbar_label)),
-    #                 # text = material_ids,
-    #                 hovertemplate=
-    #                 # 'material ID = %{z}<br>'+
-    #                 "Cell ID = %{z}<br>" +
-    #                 # '<br>%{text}<br>'+
-    #                 xlabel[:2].title()
-    #                 + ": %{x} cm<br>"
-    #                 + ylabel[:2].title()
-    #                 + ": %{y} cm<br>",
-    #             ),
-    #         )
-
-    #         plot.update_layout(
-    #             xaxis={"title": xlabel},
-    #             # reversed autorange is required to avoid image needing rotation/flipping in plotly
-    #             yaxis={"title": ylabel, "autorange": "reversed"},
-    #             title=title,
-    #             autosize=False,
-    #             height=800,
-    #         )
-    #         plot.update_yaxes(
-    #             scaleanchor="x",
-    #             scaleratio=1,
-    #         )
-    #         return plot
-
-    #     else:
-    #         raise ValueError(
-    #             f"Supported backend are 'plotly' and 'matplotlib', not {backend}"
-    #         )
-
-    # def get_outline_contour(
-    #     self,
-    #     outline_data,
-    #     view_direction,
-    #     plot_left=None,
-    #     plot_right=None,
-    #     plot_bottom=None,
-    #     plot_top=None
-    # ):
-
-    #     bb = self.bounding_box
-
-    #     if plot_left is None:
-    #         plot_left = get_side_extent(bb, 'left', view_direction)
-
-    #     if plot_right is None:
-    #         plot_right = get_side_extent(bb, 'right', view_direction)
-
-    #     if plot_bottom is None:
-    #         plot_bottom = get_side_extent(bb, 'bottom', view_direction)
-
-    #     if plot_top is None:
-    #         plot_top = get_side_extent(bb, 'top', view_direction)
-
-    #     levels = np.unique([item for sublist in outline_data for item in sublist])
-
-    #     plot = plt.contour(
-    #         outline_data,
-    #         origin="upper",
-    #         colors="k",
-    #         linestyles="solid",
-    #         levels=levels,
-    #         linewidths=0.5,
-    #         extent=(plot_left, plot_right, plot_bottom, plot_top),
-    #     )
-    #     return plot
 
 
 openmc.Geometry.get_side_extent = get_side_extent
