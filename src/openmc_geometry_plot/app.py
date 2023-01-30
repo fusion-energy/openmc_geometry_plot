@@ -255,7 +255,7 @@ def main():
         if plot_left and plot_right and plot_top and plot_bottom:
             my_geometry.view_direction = view_direction
 
-            if color_by == 'cells':
+            if color_by == "cells":
                 data_slice = my_geometry.get_slice_of_cell_ids(
                     plot_left=plot_left,
                     plot_right=plot_right,
@@ -263,7 +263,7 @@ def main():
                     plot_bottom=plot_bottom,
                     pixels_across=pixels_across,
                 )
-            elif color_by == 'materials':
+            elif color_by == "materials":
                 data_slice = my_geometry.get_slice_of_material_ids(
                     plot_left=plot_left,
                     plot_right=plot_right,
@@ -287,7 +287,9 @@ def main():
 
                 if outline is not None:
                     # gets unique levels for outlines contour plot
-                    levels = np.unique([item for sublist in data_slice for item in sublist])
+                    levels = np.unique(
+                        [item for sublist in data_slice for item in sublist]
+                    )
                     plt.contour(
                         data_slice,
                         origin="upper",
@@ -347,16 +349,16 @@ def main():
     #         )
     #         return plot
 
-                # geom_plt.write_html("openmc_plot_geometry_image.html")
+    # geom_plt.write_html("openmc_plot_geometry_image.html")
 
-                # with open("openmc_plot_geometry_image.html", "rb") as file:
-                #     col1.download_button(
-                #         label="Download image",
-                #         data=file,
-                #         file_name="openmc_plot_geometry_image.html",
-                #         mime=None,
-                #     )
-                # col2.plotly_chart(geom_plt, use_container_width=True)
+    # with open("openmc_plot_geometry_image.html", "rb") as file:
+    #     col1.download_button(
+    #         label="Download image",
+    #         data=file,
+    #         file_name="openmc_plot_geometry_image.html",
+    #         mime=None,
+    #     )
+    # col2.plotly_chart(geom_plt, use_container_width=True)
 
 
 if __name__ == "__main__":

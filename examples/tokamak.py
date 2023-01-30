@@ -94,7 +94,7 @@ my_geometry = openmc.Geometry(
 import numpy as np
 import matplotlib.pylab as plt
 
-my_geometry.view_direction = 'x'
+my_geometry.view_direction = "x"
 data_slice = my_geometry.get_slice_of_material_ids()
 
 plt.imshow(

@@ -10,17 +10,17 @@ height = 150
 outer_radius = 50
 thickness = 10
 
-outer_cylinder = openmc.ZCylinder(r=outer_radius, boundary_type='vacuum')
-inner_cylinder = openmc.ZCylinder(r=outer_radius-thickness, boundary_type='vacuum')
-inner_top = openmc.ZPlane(z0=height*0.5, boundary_type='vacuum')
-inner_bottom = openmc.ZPlane(z0=-height*0.5, boundary_type='vacuum')
-outer_top = openmc.ZPlane(z0=(height*0.5)+thickness, boundary_type='vacuum')
-outer_bottom = openmc.ZPlane(z0=(-height*0.5)-thickness, boundary_type='vacuum')
+outer_cylinder = openmc.ZCylinder(r=outer_radius, boundary_type="vacuum")
+inner_cylinder = openmc.ZCylinder(r=outer_radius - thickness, boundary_type="vacuum")
+inner_top = openmc.ZPlane(z0=height * 0.5, boundary_type="vacuum")
+inner_bottom = openmc.ZPlane(z0=-height * 0.5, boundary_type="vacuum")
+outer_top = openmc.ZPlane(z0=(height * 0.5) + thickness, boundary_type="vacuum")
+outer_bottom = openmc.ZPlane(z0=(-height * 0.5) - thickness, boundary_type="vacuum")
 
 steel = openmc.Material()
-steel.set_density('g/cm3', 7.75)
-steel.add_element('Fe', 0.95, percent_type='wo')
-steel.add_element('C', 0.05, percent_type='wo')
+steel.set_density("g/cm3", 7.75)
+steel.add_element("Fe", 0.95, percent_type="wo")
+steel.add_element("C", 0.05, percent_type="wo")
 
 mats = openmc.Materials([steel])
 
@@ -39,9 +39,9 @@ bottom_cap_cell.fill = steel
 inner_void_region = -inner_cylinder & -inner_top & +inner_bottom
 inner_void_cell = openmc.Cell(region=inner_void_region)
 
-my_geometry = openmc.Geometry([
-    inner_void_cell, cylinder_cell, top_cap_cell,
-    bottom_cap_cell])
+my_geometry = openmc.Geometry(
+    [inner_void_cell, cylinder_cell, top_cap_cell, bottom_cap_cell]
+)
 
 
 # example code for plotting materials of the geometry with an outline
@@ -51,7 +51,7 @@ import matplotlib.pylab as plt
 import openmc_geometry_plot  # adds plot_axis_slice to openmc.Geometry
 
 
-my_geometry.view_direction = 'x'
+my_geometry.view_direction = "x"
 data_slice = my_geometry.get_slice_of_cell_ids()
 
 plt.imshow(

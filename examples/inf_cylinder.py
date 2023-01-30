@@ -26,18 +26,17 @@ universe = openmc.Universe(cells=[cell_1, cell_2])
 my_geometry = openmc.Geometry(universe)
 
 
-
 # example code for plotting materials of the geometry with an outline
 
 import numpy as np
 import openmc_geometry_plot  # adds data slicing functions to openmc.Geometry
 import matplotlib.pylab as plt
 
-my_geometry.view_direction = 'x'
-plot_left=-100
-plot_right=100
-plot_bottom=200
-plot_top=-200
+my_geometry.view_direction = "x"
+plot_left = -100
+plot_right = 100
+plot_bottom = 200
+plot_top = -200
 data_slice = my_geometry.get_slice_of_material_ids(
     plot_left=plot_left,
     plot_right=plot_right,

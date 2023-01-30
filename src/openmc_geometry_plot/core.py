@@ -22,6 +22,7 @@ def get_side_extent(self, side, bb=None):
     avail_extents[("bottom", "z")] = bb[0][1]
     return avail_extents[(side, self.view_direction)]
 
+
 def get_mpl_plot_extent(self, bb=None):
 
     if bb is None:
@@ -33,6 +34,7 @@ def get_mpl_plot_extent(self, bb=None):
     y_max = self.get_side_extent("top", bb)
 
     return (x_min, x_max, y_min, y_max)
+
 
 def get_mid_slice_value(self, bb=None):
 
@@ -56,6 +58,7 @@ def get_mid_slice_value(self, bb=None):
 
     return plot_edge
 
+
 def get_axis_labels(self):
     if self.view_direction == "x":
         xlabel = "Y [cm]"
@@ -67,6 +70,7 @@ def get_axis_labels(self):
         xlabel = "X [cm]"
         ylabel = "Y [cm]"
     return xlabel, ylabel
+
 
 def get_slice_of_material_ids(
     self,
@@ -108,7 +112,7 @@ def get_slice_of_material_ids(
     # import multiprocessing.pool
     # global pool
     # pool = multiprocessing.Pool(4)
-    # pool = multiprocessing.Semaphore(multiprocessing.cpu_count() -1) 
+    # pool = multiprocessing.Semaphore(multiprocessing.cpu_count() -1)
     # out1, out2, out3 = zip(*pool.map(calc_stuff, range(0, 10 * offset, offset)))
 
     material_ids = []
@@ -133,6 +137,7 @@ def get_slice_of_material_ids(
                 row_material_ids.append(0)  # when material is "void"
         material_ids.append(row_material_ids)
     return material_ids
+
 
 def get_slice_of_cell_ids(
     self,
@@ -198,4 +203,4 @@ openmc.Geometry.get_axis_labels = get_axis_labels
 openmc.Geometry.get_slice_of_material_ids = get_slice_of_material_ids
 openmc.Geometry.get_slice_of_cell_ids = get_slice_of_cell_ids
 
-openmc.Geometry.viewdirection = 'x'
+openmc.Geometry.viewdirection = "x"
