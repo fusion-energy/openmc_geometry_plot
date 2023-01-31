@@ -135,3 +135,7 @@ dmypy.json
 _version.py
 
 *.html
+*.png
+*.h5
+*.out
+*.xml
