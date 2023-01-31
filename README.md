@@ -11,7 +11,13 @@ This package is deployed on [xsplot.com](https://www.xsplot.com) as part of the 
 
 # Local install
 
-```python
+You will need to first install openmc. There are several methods but perhaps the quickest is to use Conda.
+
+```
+conda install -c conda-forge openmc
+```
+
+```
 pip install openmc_geometry_plot
 ```
 
