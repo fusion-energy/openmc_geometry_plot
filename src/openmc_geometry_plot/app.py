@@ -1,6 +1,6 @@
 import xml.etree.ElementTree as ET
 from pathlib import Path
-
+import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 import openmc
 import streamlit as st
@@ -272,6 +272,7 @@ def main():
                     pixels_across=pixels_across,
                 )
 
+            (xlabel, ylabel) = my_geometry.get_axis_labels()
             if backend == "matplotlib":
 
                 plt.imshow(
@@ -280,7 +281,6 @@ def main():
                     interpolation="none",
                 )
 
-                (xlabel, ylabel) = my_geometry.get_axis_labels()
                 plt.xlabel(xlabel)
                 plt.ylabel(ylabel)
                 plt.title(title)
@@ -312,53 +312,67 @@ def main():
                         mime="image/png",
                     )
             else:
-                pass
 
-    #         plot = go.Figure(
-    #             data=go.Heatmap(
-    #                 z=cell_ids,
-    #                 colorscale="viridis",
-    #                 x0=plot_left,
-    #                 dx=abs(plot_left - plot_right) / (len(cell_ids[0]) - 1),
-    #                 y0=plot_bottom,
-    #                 dy=abs(plot_bottom - plot_top) / (len(cell_ids) - 1),
-    #                 # colorbar=dict(title=dict(side="right", text=cbar_label)),
-    #                 # text = material_ids,
-    #                 hovertemplate=
-    #                 # 'material ID = %{z}<br>'+
-    #                 "Cell ID = %{z}<br>" +
-    #                 # '<br>%{text}<br>'+
-    #                 xlabel[:2].title()
-    #                 + ": %{x} cm<br>"
-    #                 + ylabel[:2].title()
-    #                 + ": %{y} cm<br>",
-    #             ),
-    #         )
+                plot = go.Figure(
+                    data=[
+                        go.Heatmap(
+                            z=data_slice,
+                            showscale=False,
+                            colorscale="viridis",
+                            x0=plot_left,
+                            dx=abs(plot_left - plot_right) / (len(data_slice[0]) - 1),
+                            y0=plot_bottom,
+                            dy=abs(plot_bottom - plot_top) / (len(data_slice) - 1),
+                            # colorbar=dict(title=dict(side="right", text=cbar_label)),
+                            # text = material_ids,
+                            # hovertemplate=
+                            # # 'material ID = %{z}<br>'+
+                            # "Cell ID = %{z}<br>" +
+                            # # '<br>%{text}<br>'+
+                            # xlabel[:2].title()
+                            # + ": %{x} cm<br>"
+                            # + ylabel[:2].title()
+                            # + ": %{y} cm<br>",
+                    ),
+                    # outline
+                    go.Contour(
+                        z=data_slice,
+                        x0=plot_left,
+                        dx=abs(plot_left - plot_right) / (len(data_slice[0]) - 1),
+                        y0=plot_bottom,
+                        dy=abs(plot_bottom - plot_top) / (len(data_slice) - 1),
+                        contours_coloring='lines',
+                        line_width=1,
+                        colorscale=[[0, 'rgb(0, 0, 0)'], [1.0, 'rgb(0, 0, 0)']],
+                        showscale=False
+                    )
+                    ]
+                )
 
-    #         plot.update_layout(
-    #             xaxis={"title": xlabel},
-    #             # reversed autorange is required to avoid image needing rotation/flipping in plotly
-    #             yaxis={"title": ylabel, "autorange": "reversed"},
-    #             title=title,
-    #             autosize=False,
-    #             height=800,
-    #         )
-    #         plot.update_yaxes(
-    #             scaleanchor="x",
-    #             scaleratio=1,
-    #         )
-    #         return plot
 
-    # geom_plt.write_html("openmc_plot_geometry_image.html")
+                plot.update_layout(
+                    xaxis={"title": xlabel},
+                    # reversed autorange is required to avoid image needing rotation/flipping in plotly
+                    yaxis={"title": ylabel, "autorange": "reversed"},
+                    title=title,
+                    autosize=False,
+                    height=800,
+                )
+                plot.update_yaxes(
+                    scaleanchor="x",
+                    scaleratio=1,
+                )
 
-    # with open("openmc_plot_geometry_image.html", "rb") as file:
-    #     col1.download_button(
-    #         label="Download image",
-    #         data=file,
-    #         file_name="openmc_plot_geometry_image.html",
-    #         mime=None,
-    #     )
-    # col2.plotly_chart(geom_plt, use_container_width=True)
+                plot.write_html("openmc_plot_geometry_image.html")
+
+                with open("openmc_plot_geometry_image.html", "rb") as file:
+                    col1.download_button(
+                        label="Download image",
+                        data=file,
+                        file_name="openmc_plot_geometry_image.html",
+                        mime=None,
+                    )
+                col2.plotly_chart(plot, use_container_width=True)
 
 
 if __name__ == "__main__":

@@ -1,8 +1,9 @@
 import openmc
 import numpy as np
+import typing
 
 
-def get_side_extent(self, side, bb=None):
+def get_side_extent(self, side: str, bb=None):
 
     if bb is None:
         bb = self.bounding_box
@@ -23,10 +24,13 @@ def get_side_extent(self, side, bb=None):
     return avail_extents[(side, self.view_direction)]
 
 
-def get_mpl_plot_extent(self, bb=None):
+def get_mpl_plot_extent(self):
+    """Returns the (x_min, x_max, y_min, y_max) of the bounding box. The
+    view_direction is taken into account and can be set using
+    openmc.Geometry.view_direction property is taken into account and can be
+    set to 'x', 'y' or 'z'."""
 
-    if bb is None:
-        bb = self.bounding_box
+    bb = self.bounding_box
 
     x_min = self.get_side_extent("left", bb)
     x_max = self.get_side_extent("right", bb)
@@ -37,6 +41,9 @@ def get_mpl_plot_extent(self, bb=None):
 
 
 def get_mid_slice_value(self, bb=None):
+    """Returns the position of the center of the mesh. The view_direction is
+    taken into account and can be set using openmc.Geometry.view_direction
+    property is taken into account and can be set to 'x', 'y' or 'z'."""
 
     if bb is None:
         bb = self.bounding_box
@@ -52,14 +59,16 @@ def get_mid_slice_value(self, bb=None):
         raise ValueError(msg)
 
     if np.isinf(plot_edge):
-        msg = f"{var_name} can't be obtained from the bounding box as boundary is at inf. {var_name} value must be specified by user"
-
+        msg = f"Mid slice value can't be obtained from the bounding box as boundary is at inf. Slice value must be specified by user"
         raise ValueError(msg)
 
     return plot_edge
 
 
 def get_axis_labels(self):
+    """Returns two axis label values for the x and y value. Takes
+    view_direction into account."""
+
     if self.view_direction == "x":
         xlabel = "Y [cm]"
         ylabel = "Z [cm]"
@@ -74,13 +83,25 @@ def get_axis_labels(self):
 
 def get_slice_of_material_ids(
     self,
-    slice_value=None,
-    plot_top=None,
-    plot_bottom=None,
-    plot_left=None,
-    plot_right=None,
-    pixels_across=500,
+    slice_value: typing.Optional[float]=None,
+    plot_top:typing.Optional[float]=None,
+    plot_bottom:typing.Optional[float]=None,
+    plot_left:typing.Optional[float]=None,
+    plot_right:typing.Optional[float]=None,
+    pixels_across: int=500,
 ):
+    """Returns a grid of material IDs for each mesh voxel on the slice. This
+    can be passed directly to plotting functions like Matplotlib imshow.
+
+    Args:
+        slice_value:
+        plot_top:
+        plot_bottom:
+        plot_left:
+        plot_right:
+        pixels_across:
+    """
+
     # if any of the plot_ are None then this needs calculating
     bb = self.bounding_box
 
@@ -148,6 +169,17 @@ def get_slice_of_cell_ids(
     plot_right=None,
     pixels_across=500,
 ):
+    """Returns a grid of cell IDs for each mesh voxel on the slice. This
+    can be passed directly to plotting functions like Matplotlib imshow.
+
+    Args:
+        slice_value:
+        plot_top:
+        plot_bottom:
+        plot_left:
+        plot_right:
+        pixels_across:
+    """
 
     bb = self.bounding_box
 
@@ -196,6 +228,8 @@ def get_slice_of_cell_ids(
     return cell_ids
 
 
+# patching openmc
+
 openmc.Geometry.get_side_extent = get_side_extent
 openmc.Geometry.get_mpl_plot_extent = get_mpl_plot_extent
 openmc.Geometry.get_mid_slice_value = get_mid_slice_value
@@ -203,4 +237,5 @@ openmc.Geometry.get_axis_labels = get_axis_labels
 openmc.Geometry.get_slice_of_material_ids = get_slice_of_material_ids
 openmc.Geometry.get_slice_of_cell_ids = get_slice_of_cell_ids
 
+# setting default view direction
 openmc.Geometry.viewdirection = "x"
