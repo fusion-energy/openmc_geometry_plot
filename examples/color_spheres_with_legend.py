@@ -3,6 +3,7 @@ import matplotlib.pylab as plt
 import openmc
 import openmc_geometry_plot  # adds functions to openmc.Geometry
 from matplotlib import colors
+import matplotlib.patches as mpatches
 
 # MATERIALS
 
@@ -42,14 +43,10 @@ my_geometry = openmc.Geometry(
 )
 
 
-# this part plots the geometry with colors
-
+# these three lines are functionality added by the openmc_geometry_plot
 my_geometry.view_direction = "x"
-data_slice = my_geometry.get_slice_of_material_ids()
-
 xlabel, ylabel = my_geometry.get_axis_labels()
-plt.xlabel(xlabel)
-plt.ylabel(ylabel)
+data_slice = my_geometry.get_slice_of_material_ids()
 
 # gets unique levels for outlines contour plot and for the color scale
 levels = np.unique([item for sublist in data_slice for item in sublist])
@@ -59,8 +56,10 @@ cmap = colors.ListedColormap(["white", "red", "blue"])
 bounds = [0, 1, 2, 3]
 norm = colors.BoundaryNorm(bounds, cmap.N)
 
+plt.xlabel(xlabel)
+plt.ylabel(ylabel)
 
-plt.imshow(
+im = plt.imshow(
     data_slice,
     extent=my_geometry.get_mpl_plot_extent(),
     interpolation="none",
@@ -68,6 +67,23 @@ plt.imshow(
     cmap=cmap,  # needed for colors
 )
 
+# gets the colors of the values according to the color map used by imshow
+colors = [ im.cmap(im.norm(value)) for value in levels]
+
+# these will be the labels used for each material id
+labels = {0: 'vacuum', 1: 'mat1', 2: 'mat2'}
+
+patches = [
+    mpatches.Patch(color=colors[i],
+    label=labels[levels[i]]) for i in range(len(levels))
+]
+
+plt.legend(
+    handles=patches,
+    bbox_to_anchor=(1.05, 1),
+    loc=2,
+    borderaxespad=0.
+)
 
 plt.contour(
     data_slice,

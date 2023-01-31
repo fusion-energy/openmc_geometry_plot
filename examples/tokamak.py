@@ -97,6 +97,10 @@ import matplotlib.pylab as plt
 my_geometry.view_direction = "x"
 data_slice = my_geometry.get_slice_of_material_ids()
 
+xlabel, ylabel = my_geometry.get_axis_labels()
+plt.xlabel(xlabel)
+plt.ylabel(ylabel)
+
 plt.imshow(
     data_slice,
     extent=my_geometry.get_mpl_plot_extent(),

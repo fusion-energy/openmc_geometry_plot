@@ -44,6 +44,10 @@ data_slice = my_geometry.get_slice_of_material_ids(
     plot_top=plot_top,
 )
 
+xlabel, ylabel = my_geometry.get_axis_labels()
+plt.xlabel(xlabel)
+plt.ylabel(ylabel)
+
 plt.imshow(
     data_slice,
     extent=(plot_left, plot_right, plot_bottom, plot_top),
