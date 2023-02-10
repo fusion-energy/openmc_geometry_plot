@@ -80,6 +80,9 @@ def get_axis_labels(self):
         ylabel = "Y [cm]"
     return xlabel, ylabel
 
+def find_cell_id(self, inputs):
+    plot_x, plot_y, slice_value = inputs
+    return self.find((plot_x, plot_y, slice_value))
 
 def get_slice_of_material_ids(
     self,
@@ -128,14 +131,7 @@ def get_slice_of_material_ids(
 
     aspect_ratio = plot_height / plot_width
     pixels_up = int(pixels_across * aspect_ratio)
-
-    # todo look into parrallel version of this
-    # import multiprocessing.pool
-    # global pool
-    # pool = multiprocessing.Pool(4)
-    # pool = multiprocessing.Semaphore(multiprocessing.cpu_count() -1)
-    # out1, out2, out3 = zip(*pool.map(calc_stuff, range(0, 10 * offset, offset)))
-
+    
     material_ids = []
     for plot_y in np.linspace(plot_top, plot_bottom, pixels_up):
         row_material_ids = []
@@ -236,6 +232,7 @@ openmc.Geometry.get_mid_slice_value = get_mid_slice_value
 openmc.Geometry.get_axis_labels = get_axis_labels
 openmc.Geometry.get_slice_of_material_ids = get_slice_of_material_ids
 openmc.Geometry.get_slice_of_cell_ids = get_slice_of_cell_ids
+openmc.Geometry.find_cell_id = find_cell_id
 
 # setting default view direction
 openmc.Geometry.viewdirection = "x"
