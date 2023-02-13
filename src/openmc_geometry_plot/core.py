@@ -134,7 +134,7 @@ def get_slice_of_material_ids(
 
     aspect_ratio = plot_height / plot_width
     pixels_up = int(pixels_across * aspect_ratio)
-    
+
     material_ids = []
     for plot_y in np.linspace(plot_top, plot_bottom, pixels_up):
         row_material_ids = []
@@ -187,16 +187,16 @@ def get_slice_of_cell_ids(
         raise ValueError('view_direction must be "x", "y" or "z"')
 
     if plot_left is None:
-        plot_left = self.get_side_extent("left", bb)
+        plot_left = self.get_side_extent(side="left", bounding_box=bb, view_direction=view_direction)
 
     if plot_right is None:
-        plot_right = self.get_side_extent("right", bb)
+        plot_right = self.get_side_extent(side="right", bounding_box=bb, view_direction=view_direction)
 
     if plot_bottom is None:
-        plot_bottom = self.get_side_extent("bottom", bb)
+        plot_bottom = self.get_side_extent(side="bottom", bounding_box=bb, view_direction=view_direction)
 
     if plot_top is None:
-        plot_top = self.get_side_extent("top", bb)
+        plot_top = self.get_side_extent(side="top", bounding_box=bb, view_direction=view_direction)
 
     if slice_value is None:
         slice_value = self.get_mid_slice_value(bounding_box=bb, view_direction=view_direction)
