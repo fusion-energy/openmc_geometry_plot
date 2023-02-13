@@ -144,7 +144,7 @@ def get_slice_of_material_ids(
         print(i, mat_ids)
         n = openmc.Material()
         n.id = i
-        n.add_nuclide('Li6', 1)
+        n.add_nuclide('He4', 1)
         all_materials.append(n)
     nn = openmc.Materials(all_materials)
     nn.export_to_xml()
@@ -154,49 +154,64 @@ def get_slice_of_material_ids(
     my_settings.output = {'summary': False, 'tallies': False}
     my_settings.particles=1
     my_settings.batches=1
+    my_settings.batches=1
+    my_settings.run_mode = 'fixed source'
     my_settings.export_to_xml()
 
-    openmc.lib.init()
+    my_plot = openmc.Plot()
 
-    material_ids = []
-    for plot_y in np.linspace(plot_top, plot_bottom, pixels_up):
-        row_material_ids = []
-        for plot_x in np.linspace(plot_left, plot_right, pixels_across):
+    my_plot.basis = 'xz'
+    my_plot.origin = (5.0, 2.0, 3.0)
+    my_plot.width = (50., 50.)
+    my_plot.pixels = (400, 400)
 
-            try:
+    # my_plot.colors = {
+    #     water: (0, 0, 255),
+    #     clad: (0, 0, 0)
+    # }
+    my_plots = openmc.Plots([my_plot])
+    my_plots.export_to_xml()
+    openmc.plot_geometry()
+
+    # material_ids = []
+    # for plot_y in np.linspace(plot_top, plot_bottom, pixels_up):
+    #     row_material_ids = []
+    #     for plot_x in np.linspace(plot_left, plot_right, pixels_across):
+
+    #         try:
                     
-                if view_direction == "z":
-                    found = openmc.lib.find_material((plot_x, plot_y, slice_value))
-                    # found = self.find((plot_x, plot_y, slice_value))
-                if view_direction == "x":
-                    found = openmc.lib.find_material((slice_value, plot_x, plot_y))
-                    # found = self.find((slice_value, plot_x, plot_y))
-                if view_direction == "y":
-                    found = openmc.lib.find_material((plot_x, slice_value, plot_y))
-                    # found = self.find((plot_x, slice_value, plot_y))
+    #             if view_direction == "z":
+    #                 found = openmc.lib.find_material((plot_x, plot_y, slice_value))
+    #                 # found = self.find((plot_x, plot_y, slice_value))
+    #             if view_direction == "x":
+    #                 found = openmc.lib.find_material((slice_value, plot_x, plot_y))
+    #                 # found = self.find((slice_value, plot_x, plot_y))
+    #             if view_direction == "y":
+    #                 found = openmc.lib.find_material((plot_x, slice_value, plot_y))
+    #                 # found = self.find((plot_x, slice_value, plot_y))
 
-                if found == None:
-                    found = 0
-                else:
-                    found = found.id
-            except openmc.exceptions.GeometryError:
-                found = 0
-            #     print(found)
-            #     print(found.id)
-            #     input()
-            row_material_ids.append(found)
-            # if len(found) >= 2:
-            #     if found[1].fill is not None:
-            #         mat = found[1].fill
-            #         row_material_ids.append(mat.id)
-            #     else:
-            #         row_material_ids.append(0)  # when material is "void"
-            # else:
-            #     row_material_ids.append(0)  # when material is "void"
-        material_ids.append(row_material_ids)
+    #             if found == None:
+    #                 found = 0
+    #             else:
+    #                 found = found.id
+    #         except openmc.exceptions.GeometryError:
+    #             found = 0
+    #         #     print(found)
+    #         #     print(found.id)
+    #         #     input()
+    #         row_material_ids.append(found)
+    #         # if len(found) >= 2:
+    #         #     if found[1].fill is not None:
+    #         #         mat = found[1].fill
+    #         #         row_material_ids.append(mat.id)
+    #         #     else:
+    #         #         row_material_ids.append(0)  # when material is "void"
+    #         # else:
+    #         #     row_material_ids.append(0)  # when material is "void"
+    #     material_ids.append(row_material_ids)
     
-    openmc.lib.finalize()
-    return material_ids
+    # openmc.lib.finalize()
+    # return material_ids
 
 
 def get_slice_of_cell_ids(
