@@ -44,9 +44,8 @@ my_geometry = openmc.Geometry(
 
 
 # these three lines are functionality added by the openmc_geometry_plot
-my_geometry.view_direction = "x"
-xlabel, ylabel = my_geometry.get_axis_labels()
-data_slice = my_geometry.get_slice_of_material_ids()
+xlabel, ylabel = my_geometry.get_axis_labels(view_direction = "x")
+data_slice = my_geometry.get_slice_of_material_ids(view_direction = "x")
 
 # gets unique levels for outlines contour plot and for the color scale
 levels = np.unique([item for sublist in data_slice for item in sublist])
@@ -56,12 +55,14 @@ cmap = colors.ListedColormap(["white", "red", "blue"])
 bounds = [0, 1, 2, 3]
 norm = colors.BoundaryNorm(bounds, cmap.N)
 
+plot_extent = my_geometry.get_mpl_plot_extent(view_direction = "x")
+
 plt.xlabel(xlabel)
 plt.ylabel(ylabel)
 
 im = plt.imshow(
     data_slice,
-    extent=my_geometry.get_mpl_plot_extent(),
+    extent=plot_extent,
     interpolation="none",
     norm=norm,  # needed for colors
     cmap=cmap,  # needed for colors
@@ -92,7 +93,7 @@ plt.contour(
     linestyles="solid",
     levels=levels,
     linewidths=0.5,
-    extent=my_geometry.get_mpl_plot_extent(),
+    extent=plot_extent,
 )
 
 plt.show()

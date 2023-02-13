@@ -94,16 +94,16 @@ my_geometry = openmc.Geometry(
 import numpy as np
 import matplotlib.pylab as plt
 
-my_geometry.view_direction = "x"
-data_slice = my_geometry.get_slice_of_material_ids()
-
-xlabel, ylabel = my_geometry.get_axis_labels()
+data_slice = my_geometry.get_slice_of_material_ids(view_direction='x')
+xlabel, ylabel = my_geometry.get_axis_labels(view_direction='x')
 plt.xlabel(xlabel)
 plt.ylabel(ylabel)
 
+plot_extent = my_geometry.get_mpl_plot_extent(view_direction='x')
+
 plt.imshow(
     data_slice,
-    extent=my_geometry.get_mpl_plot_extent(),
+    extent=plot_extent,
     interpolation="none",
 )
 
@@ -117,7 +117,7 @@ plt.contour(
     linestyles="solid",
     levels=levels,
     linewidths=0.5,
-    extent=my_geometry.get_mpl_plot_extent(),
+    extent=plot_extent,
 )
 
 plt.show()

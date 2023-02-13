@@ -3,28 +3,28 @@ import numpy as np
 import typing
 
 
-def get_side_extent(self, side: str, bb=None):
+def get_side_extent(self, side: str, view_direction:str, bounding_box=None):
 
-    if bb is None:
-        bb = self.bounding_box
+    if bounding_box is None:
+        bounding_box = self.bounding_box
 
     avail_extents = {}
-    avail_extents[("left", "x")] = bb[0][1]
-    avail_extents[("right", "x")] = bb[1][1]
-    avail_extents[("top", "x")] = bb[1][2]
-    avail_extents[("bottom", "x")] = bb[0][2]
-    avail_extents[("left", "y")] = bb[0][0]
-    avail_extents[("right", "y")] = bb[1][0]
-    avail_extents[("top", "y")] = bb[1][2]
-    avail_extents[("bottom", "y")] = bb[0][2]
-    avail_extents[("left", "z")] = bb[0][0]
-    avail_extents[("right", "z")] = bb[1][0]
-    avail_extents[("top", "z")] = bb[1][1]
-    avail_extents[("bottom", "z")] = bb[0][1]
-    return avail_extents[(side, self.view_direction)]
+    avail_extents[("left", "x")] = bounding_box[0][1]
+    avail_extents[("right", "x")] = bounding_box[1][1]
+    avail_extents[("top", "x")] = bounding_box[1][2]
+    avail_extents[("bottom", "x")] = bounding_box[0][2]
+    avail_extents[("left", "y")] = bounding_box[0][0]
+    avail_extents[("right", "y")] = bounding_box[1][0]
+    avail_extents[("top", "y")] = bounding_box[1][2]
+    avail_extents[("bottom", "y")] = bounding_box[0][2]
+    avail_extents[("left", "z")] = bounding_box[0][0]
+    avail_extents[("right", "z")] = bounding_box[1][0]
+    avail_extents[("top", "z")] = bounding_box[1][1]
+    avail_extents[("bottom", "z")] = bounding_box[0][1]
+    return avail_extents[(side, view_direction)]
 
 
-def get_mpl_plot_extent(self):
+def get_mpl_plot_extent(self, view_direction):
     """Returns the (x_min, x_max, y_min, y_max) of the bounding box. The
     view_direction is taken into account and can be set using
     openmc.Geometry.view_direction property is taken into account and can be
@@ -32,30 +32,30 @@ def get_mpl_plot_extent(self):
 
     bb = self.bounding_box
 
-    x_min = self.get_side_extent("left", bb)
-    x_max = self.get_side_extent("right", bb)
-    y_min = self.get_side_extent("bottom", bb)
-    y_max = self.get_side_extent("top", bb)
+    x_min = self.get_side_extent(side="left", view_direction=view_direction, bounding_box=bb)
+    x_max = self.get_side_extent(side="right", view_direction=view_direction, bounding_box=bb)
+    y_min = self.get_side_extent(side="bottom", view_direction=view_direction, bounding_box=bb)
+    y_max = self.get_side_extent(side="top", view_direction=view_direction, bounding_box=bb)
 
     return (x_min, x_max, y_min, y_max)
 
 
-def get_mid_slice_value(self, bb=None):
+def get_mid_slice_value(self, view_direction, bounding_box=None):
     """Returns the position of the center of the mesh. The view_direction is
     taken into account and can be set using openmc.Geometry.view_direction
     property is taken into account and can be set to 'x', 'y' or 'z'."""
 
-    if bb is None:
-        bb = self.bounding_box
+    if bounding_box is None:
+        bounding_box = self.bounding_box
 
-    if self.view_direction == "x":
-        plot_edge = (bb[0][0] + bb[1][0]) / 2
-    elif self.view_direction == "y":
-        plot_edge = (bb[0][1] + bb[1][1]) / 2
-    elif self.view_direction == "z":
-        plot_edge = (bb[0][2] + bb[1][2]) / 2
+    if view_direction == "x":
+        plot_edge = (bounding_box[0][0] + bounding_box[1][0]) / 2
+    elif view_direction == "y":
+        plot_edge = (bounding_box[0][1] + bounding_box[1][1]) / 2
+    elif view_direction == "z":
+        plot_edge = (bounding_box[0][2] + bounding_box[1][2]) / 2
     else:
-        msg = f'view_direction must be "x", "y" or "z" not {self.view_direction}'
+        msg = f'view_direction must be "x", "y" or "z" not {view_direction}'
         raise ValueError(msg)
 
     if np.isinf(plot_edge):
@@ -65,24 +65,30 @@ def get_mid_slice_value(self, bb=None):
     return plot_edge
 
 
-def get_axis_labels(self):
+def get_axis_labels(self, view_direction):
     """Returns two axis label values for the x and y value. Takes
     view_direction into account."""
 
-    if self.view_direction == "x":
+    if view_direction == "x":
         xlabel = "Y [cm]"
         ylabel = "Z [cm]"
-    if self.view_direction == "y":
+    if view_direction == "y":
         xlabel = "X [cm]"
         ylabel = "Z [cm]"
-    if self.view_direction == "z":
+    if view_direction == "z":
         xlabel = "X [cm]"
         ylabel = "Y [cm]"
     return xlabel, ylabel
 
 
+def find_cell_id(self, inputs):
+    plot_x, plot_y, slice_value = inputs
+    return self.find((plot_x, plot_y, slice_value))
+
+
 def get_slice_of_material_ids(
     self,
+    view_direction: str,
     slice_value: typing.Optional[float]=None,
     plot_top:typing.Optional[float]=None,
     plot_bottom:typing.Optional[float]=None,
@@ -105,23 +111,23 @@ def get_slice_of_material_ids(
     # if any of the plot_ are None then this needs calculating
     bb = self.bounding_box
 
-    if self.view_direction not in ["x", "y", "z"]:
+    if view_direction not in ["x", "y", "z"]:
         raise ValueError('view_direction must be "x", "y" or "z"')
 
     if plot_left is None:
-        plot_left = self.get_side_extent("left", bb)
+        plot_left = self.get_side_extent(side="left", bounding_box=bb, view_direction=view_direction)
 
     if plot_right is None:
-        plot_right = self.get_side_extent("right", bb)
+        plot_right = self.get_side_extent(side="right", bounding_box=bb, view_direction=view_direction)
 
     if plot_bottom is None:
-        plot_bottom = self.get_side_extent("bottom", bb)
+        plot_bottom = self.get_side_extent(side="bottom", bounding_box=bb, view_direction=view_direction)
 
     if plot_top is None:
-        plot_top = self.get_side_extent("top", bb)
+        plot_top = self.get_side_extent(side="top", bounding_box=bb, view_direction=view_direction)
 
     if slice_value is None:
-        slice_value = self.get_mid_slice_value(bb)
+        slice_value = self.get_mid_slice_value(bounding_box=bb, view_direction=view_direction)
 
     plot_width = abs(plot_left - plot_right)
     plot_height = abs(plot_bottom - plot_top)
@@ -129,23 +135,16 @@ def get_slice_of_material_ids(
     aspect_ratio = plot_height / plot_width
     pixels_up = int(pixels_across * aspect_ratio)
 
-    # todo look into parrallel version of this
-    # import multiprocessing.pool
-    # global pool
-    # pool = multiprocessing.Pool(4)
-    # pool = multiprocessing.Semaphore(multiprocessing.cpu_count() -1)
-    # out1, out2, out3 = zip(*pool.map(calc_stuff, range(0, 10 * offset, offset)))
-
     material_ids = []
     for plot_y in np.linspace(plot_top, plot_bottom, pixels_up):
         row_material_ids = []
         for plot_x in np.linspace(plot_left, plot_right, pixels_across):
 
-            if self.view_direction == "z":
+            if view_direction == "z":
                 found = self.find((plot_x, plot_y, slice_value))
-            if self.view_direction == "x":
+            if view_direction == "x":
                 found = self.find((slice_value, plot_x, plot_y))
-            if self.view_direction == "y":
+            if view_direction == "y":
                 found = self.find((plot_x, slice_value, plot_y))
 
             if len(found) >= 2:
@@ -162,6 +161,7 @@ def get_slice_of_material_ids(
 
 def get_slice_of_cell_ids(
     self,
+    view_direction: str,
     slice_value=None,
     plot_top=None,
     plot_bottom=None,
@@ -183,23 +183,23 @@ def get_slice_of_cell_ids(
 
     bb = self.bounding_box
 
-    if self.view_direction not in ["x", "y", "z"]:
+    if view_direction not in ["x", "y", "z"]:
         raise ValueError('view_direction must be "x", "y" or "z"')
 
     if plot_left is None:
-        plot_left = self.get_side_extent("left", bb)
+        plot_left = self.get_side_extent(side="left", bounding_box=bb, view_direction=view_direction)
 
     if plot_right is None:
-        plot_right = self.get_side_extent("right", bb)
+        plot_right = self.get_side_extent(side="right", bounding_box=bb, view_direction=view_direction)
 
     if plot_bottom is None:
-        plot_bottom = self.get_side_extent("bottom", bb)
+        plot_bottom = self.get_side_extent(side="bottom", bounding_box=bb, view_direction=view_direction)
 
     if plot_top is None:
-        plot_top = self.get_side_extent("top", bb)
+        plot_top = self.get_side_extent(side="top", bounding_box=bb, view_direction=view_direction)
 
     if slice_value is None:
-        slice_value = self.get_mid_slice_value(bb)
+        slice_value = self.get_mid_slice_value(bounding_box=bb, view_direction=view_direction)
 
     plot_width = abs(plot_left - plot_right)
     plot_height = abs(plot_bottom - plot_top)
@@ -212,11 +212,11 @@ def get_slice_of_cell_ids(
         row_cell_ids = []
         for plot_x in np.linspace(plot_left, plot_right, pixels_across):
 
-            if self.view_direction == "z":
+            if view_direction == "z":
                 found = self.find((plot_x, plot_y, slice_value))
-            if self.view_direction == "x":
+            if view_direction == "x":
                 found = self.find((slice_value, plot_x, plot_y))
-            if self.view_direction == "y":
+            if view_direction == "y":
                 found = self.find((plot_x, slice_value, plot_y))
 
             if len(found) >= 2:
@@ -236,6 +236,7 @@ openmc.Geometry.get_mid_slice_value = get_mid_slice_value
 openmc.Geometry.get_axis_labels = get_axis_labels
 openmc.Geometry.get_slice_of_material_ids = get_slice_of_material_ids
 openmc.Geometry.get_slice_of_cell_ids = get_slice_of_cell_ids
+openmc.Geometry.find_cell_id = find_cell_id
 
 # setting default view direction
 openmc.Geometry.viewdirection = "x"
