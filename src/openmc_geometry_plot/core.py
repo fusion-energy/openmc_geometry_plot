@@ -154,16 +154,46 @@ def get_slice_of_material_ids(
     my_settings.output = {'summary': False, 'tallies': False}
     my_settings.particles=1
     my_settings.batches=1
-    my_settings.batches=1
     my_settings.run_mode = 'fixed source'
     my_settings.export_to_xml()
 
     my_plot = openmc.Plot()
 
-    my_plot.basis = 'xz'
-    my_plot.origin = (5.0, 2.0, 3.0)
-    my_plot.width = (50., 50.)
+    if view_direction == "z":
+        my_plot.basis  = 'xy'
+        plot_x = (plot_left + plot_right)/2
+        plot_y= (plot_top+plot_bottom)/2
+        my_plot.origin = (plot_x, plot_y, slice_value)
+        width=plot_left-plot_right
+        height=plot_top-plot_bottom
+        my_plot.width = (width, height)
+        # found = openmc.lib.find_material()
+        # found = self.find((plot_x, plot_y, slice_value))
+    if view_direction == "x":
+        my_plot.basis = 'xz'
+        found = openmc.lib.find_material((slice_value, plot_x, plot_y))
+        # found = self.find((slice_value, plot_x, plot_y))
+    if view_direction == "y":
+        my_plot.basis = 'xz'
+        found = openmc.lib.find_material((plot_x, slice_value, plot_y))
+        # found = self.find((plot_x, slice_value, plot_y))
+
+    
+    # my_plot.origin = (5.0, 2.0, 3.0)
+    # my_plot.width = (50., 50.)
     my_plot.pixels = (400, 400)
+    
+    from PIL import Image
+
+from numpy import asarray
+
+# load the image
+
+image = Image.open('kolala.jpeg')
+
+# convert image to numpy array
+
+data = asarray(image)
 
     # my_plot.colors = {
     #     water: (0, 0, 255),
