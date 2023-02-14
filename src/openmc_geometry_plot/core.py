@@ -219,7 +219,7 @@ def get_slice_of_material_ids(
     package_dir = Path(__file__).parent
     openmc.config['cross_sections'] = package_dir/'cross_sections.xml'
 
-    openmc.plot_geometry(cwd=tmp_folder, output=False)
+    openmc.plot_geometry(cwd=tmp_folder)#, output=False)
 
     print(f'Temporary ppm and xml files written to {tmp_folder}')
 
