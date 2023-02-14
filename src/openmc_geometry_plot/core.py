@@ -214,6 +214,11 @@ def get_slice_of_material_ids(
     my_plot.id = 42  # the integer used to name of the plot_1.ppm file
     my_plots = openmc.Plots([my_plot])
     my_plots.export_to_xml(tmp_folder)
+
+    #TODO unset this afterwards
+    package_dir = Path(__file__).parent
+    openmc.config['cross_sections'] = package_dir/'cross_sections.xml'
+
     openmc.plot_geometry(cwd=tmp_folder, output=False)
 
     print(f'Temporary ppm and xml files written to {tmp_folder}')
