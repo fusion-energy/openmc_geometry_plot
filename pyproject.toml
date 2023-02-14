@@ -45,6 +45,4 @@ package-dir = {"" = "src"}
 openmc_geometry_plot = "openmc_geometry_plot.launch:main"
 
 [options.package_data]
-openmc_geometry_plot =
-    *.xml
-    *.h5
+openmc_geometry_plot = ["*.xml", "*.h5"]
