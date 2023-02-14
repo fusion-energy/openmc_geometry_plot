@@ -1,7 +1,6 @@
 import openmc
 import numpy as np
 import typing
-import openmc.lib
 from tempfile import mkdtemp
 from pathlib import Path
 import matplotlib.pyplot as plt
