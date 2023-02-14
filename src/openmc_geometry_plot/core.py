@@ -2,6 +2,7 @@ import openmc
 import numpy as np
 import typing
 import openmc.lib
+from tempfile import mkdtemp
 
 
 def get_side_extent(self, side: str, view_direction:str, bounding_box=None):
@@ -147,15 +148,16 @@ def get_slice_of_material_ids(
         n.add_nuclide('He4', 1)
         all_materials.append(n)
     nn = openmc.Materials(all_materials)
-    nn.export_to_xml()
-    self.export_to_xml()
+    tmp_folder = mkdtemp(prefix='openmc_geometry_plotter_tmp_files')
+    nn.export_to_xml(tmp_folder)
+    self.export_to_xml(tmp_folder)
 
     my_settings = openmc.Settings()
     my_settings.output = {'summary': False, 'tallies': False}
     my_settings.particles=1
     my_settings.batches=1
     my_settings.run_mode = 'fixed source'
-    my_settings.export_to_xml()
+    my_settings.export_to_xml(tmp_folder)
 
     my_plot = openmc.Plot()
 
@@ -171,11 +173,23 @@ def get_slice_of_material_ids(
         # found = self.find((plot_x, plot_y, slice_value))
     if view_direction == "x":
         my_plot.basis = 'xz'
-        found = openmc.lib.find_material((slice_value, plot_x, plot_y))
+        plot_x = (plot_left + plot_right)/2
+        plot_y= (plot_top+plot_bottom)/2
+        my_plot.origin = (slice_value, plot_x, plot_y)
+        width=plot_left-plot_right
+        height=plot_top-plot_bottom
+        my_plot.width = (width, height)
+        # found = openmc.lib.find_material((slice_value, plot_x, plot_y))
         # found = self.find((slice_value, plot_x, plot_y))
     if view_direction == "y":
         my_plot.basis = 'xz'
-        found = openmc.lib.find_material((plot_x, slice_value, plot_y))
+        plot_x = (plot_left + plot_right)/2
+        plot_y= (plot_top+plot_bottom)/2
+        my_plot.origin = (plot_x, slice_value, plot_y)
+        width=plot_left-plot_right
+        height=plot_top-plot_bottom
+        my_plot.width = (width, height)
+        # found = openmc.lib.find_material((plot_x, slice_value, plot_y))
         # found = self.find((plot_x, slice_value, plot_y))
 
     
@@ -183,25 +197,27 @@ def get_slice_of_material_ids(
     # my_plot.width = (50., 50.)
     my_plot.pixels = (400, 400)
     
-    from PIL import Image
-
-from numpy import asarray
-
-# load the image
-
-image = Image.open('kolala.jpeg')
-
-# convert image to numpy array
-
-data = asarray(image)
 
     # my_plot.colors = {
     #     water: (0, 0, 255),
     #     clad: (0, 0, 0)
     # }
     my_plots = openmc.Plots([my_plot])
-    my_plots.export_to_xml()
-    openmc.plot_geometry()
+    my_plots.export_to_xml(tmp_folder)
+    openmc.plot_geometry(cwd=tmp_folder)
+
+
+    from PIL import Image
+
+    from numpy import asarray
+
+    # load the image
+
+    image = Image.open('kolala.jpeg')
+
+    # convert image to numpy array
+
+    data = asarray(image)
 
     # material_ids = []
     # for plot_y in np.linspace(plot_top, plot_bottom, pixels_up):
