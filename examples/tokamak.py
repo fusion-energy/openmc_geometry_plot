@@ -95,13 +95,6 @@ import numpy as np
 import matplotlib.pylab as plt
 
 
-# import time
-# for x in range(2):
-#     start_time = time.time()
-#     data_slice = my_geometry.get_slice_of_material_ids(view_direction='x')
-#     print("--- %s seconds ---" % (time.time() - start_time))
-
-
 data_slice = my_geometry.get_slice_of_material_ids(view_direction="x")
 xlabel, ylabel = my_geometry.get_axis_labels(view_direction="x")
 plt.xlabel(xlabel)
