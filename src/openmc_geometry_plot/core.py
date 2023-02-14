@@ -3,9 +3,15 @@ import numpy as np
 import typing
 import openmc.lib
 from tempfile import mkdtemp
+from pathlib import Path
+import matplotlib.pyplot as plt
+
+from PIL import Image
+
+from numpy import asarray
 
 
-def get_side_extent(self, side: str, view_direction:str, bounding_box=None):
+def get_side_extent(self, side: str, view_direction: str, bounding_box=None):
 
     if bounding_box is None:
         bounding_box = self.bounding_box
@@ -34,10 +40,18 @@ def get_mpl_plot_extent(self, view_direction):
 
     bb = self.bounding_box
 
-    x_min = self.get_side_extent(side="left", view_direction=view_direction, bounding_box=bb)
-    x_max = self.get_side_extent(side="right", view_direction=view_direction, bounding_box=bb)
-    y_min = self.get_side_extent(side="bottom", view_direction=view_direction, bounding_box=bb)
-    y_max = self.get_side_extent(side="top", view_direction=view_direction, bounding_box=bb)
+    x_min = self.get_side_extent(
+        side="left", view_direction=view_direction, bounding_box=bb
+    )
+    x_max = self.get_side_extent(
+        side="right", view_direction=view_direction, bounding_box=bb
+    )
+    y_min = self.get_side_extent(
+        side="bottom", view_direction=view_direction, bounding_box=bb
+    )
+    y_max = self.get_side_extent(
+        side="top", view_direction=view_direction, bounding_box=bb
+    )
 
     return (x_min, x_max, y_min, y_max)
 
@@ -91,15 +105,16 @@ def find_cell_id(self, inputs):
 def get_slice_of_material_ids(
     self,
     view_direction: str,
-    slice_value: typing.Optional[float]=None,
-    plot_top:typing.Optional[float]=None,
-    plot_bottom:typing.Optional[float]=None,
-    plot_left:typing.Optional[float]=None,
-    plot_right:typing.Optional[float]=None,
-    pixels_across: int=500,
+    slice_value: typing.Optional[float] = None,
+    plot_top: typing.Optional[float] = None,
+    plot_bottom: typing.Optional[float] = None,
+    plot_left: typing.Optional[float] = None,
+    plot_right: typing.Optional[float] = None,
+    pixels_across: int = 500,
 ):
     """Returns a grid of material IDs for each mesh voxel on the slice. This
-    can be passed directly to plotting functions like Matplotlib imshow.
+    can be passed directly to plotting functions like Matplotlib imshow. 0
+    values represent void space or undefined space.
 
     Args:
         slice_value:
@@ -117,19 +132,29 @@ def get_slice_of_material_ids(
         raise ValueError('view_direction must be "x", "y" or "z"')
 
     if plot_left is None:
-        plot_left = self.get_side_extent(side="left", bounding_box=bb, view_direction=view_direction)
+        plot_left = self.get_side_extent(
+            side="left", bounding_box=bb, view_direction=view_direction
+        )
 
     if plot_right is None:
-        plot_right = self.get_side_extent(side="right", bounding_box=bb, view_direction=view_direction)
+        plot_right = self.get_side_extent(
+            side="right", bounding_box=bb, view_direction=view_direction
+        )
 
     if plot_bottom is None:
-        plot_bottom = self.get_side_extent(side="bottom", bounding_box=bb, view_direction=view_direction)
+        plot_bottom = self.get_side_extent(
+            side="bottom", bounding_box=bb, view_direction=view_direction
+        )
 
     if plot_top is None:
-        plot_top = self.get_side_extent(side="top", bounding_box=bb, view_direction=view_direction)
+        plot_top = self.get_side_extent(
+            side="top", bounding_box=bb, view_direction=view_direction
+        )
 
     if slice_value is None:
-        slice_value = self.get_mid_slice_value(bounding_box=bb, view_direction=view_direction)
+        slice_value = self.get_mid_slice_value(
+            bounding_box=bb, view_direction=view_direction
+        )
 
     plot_width = abs(plot_left - plot_right)
     plot_height = abs(plot_bottom - plot_top)
@@ -137,127 +162,83 @@ def get_slice_of_material_ids(
     aspect_ratio = plot_height / plot_width
     pixels_up = int(pixels_across * aspect_ratio)
 
-    materials = self.get_all_materials()
-    mat_ids = materials.keys()
+    original_materials = self.get_all_materials()
+    mat_ids = original_materials.keys()
 
     all_materials = []
     for i in mat_ids:
         print(i, mat_ids)
         n = openmc.Material()
         n.id = i
-        n.add_nuclide('He4', 1)
+        n.add_nuclide("He4", 1)
         all_materials.append(n)
     nn = openmc.Materials(all_materials)
-    tmp_folder = mkdtemp(prefix='openmc_geometry_plotter_tmp_files')
+    tmp_folder = mkdtemp(prefix="openmc_geometry_plotter_tmp_files")
     nn.export_to_xml(tmp_folder)
     self.export_to_xml(tmp_folder)
 
     my_settings = openmc.Settings()
-    my_settings.output = {'summary': False, 'tallies': False}
-    my_settings.particles=1
-    my_settings.batches=1
-    my_settings.run_mode = 'fixed source'
+    my_settings.output = {"summary": False, "tallies": False}
+    # add verbose setting to avoid print out
+    my_settings.particles = 1
+    my_settings.batches = 1
+    my_settings.run_mode = "fixed source"
     my_settings.export_to_xml(tmp_folder)
 
     my_plot = openmc.Plot()
 
+    plot_x = (plot_left + plot_right) / 2
+    plot_y = (plot_top + plot_bottom) / 2
+
+    width = plot_left - plot_right
+    height = plot_top - plot_bottom
+    my_plot.width = (width, height)
+
     if view_direction == "z":
-        my_plot.basis  = 'xy'
-        plot_x = (plot_left + plot_right)/2
-        plot_y= (plot_top+plot_bottom)/2
+        my_plot.basis = "xy"
         my_plot.origin = (plot_x, plot_y, slice_value)
-        width=plot_left-plot_right
-        height=plot_top-plot_bottom
-        my_plot.width = (width, height)
-        # found = openmc.lib.find_material()
-        # found = self.find((plot_x, plot_y, slice_value))
     if view_direction == "x":
-        my_plot.basis = 'xz'
-        plot_x = (plot_left + plot_right)/2
-        plot_y= (plot_top+plot_bottom)/2
+        my_plot.basis = "xz"
         my_plot.origin = (slice_value, plot_x, plot_y)
-        width=plot_left-plot_right
-        height=plot_top-plot_bottom
-        my_plot.width = (width, height)
-        # found = openmc.lib.find_material((slice_value, plot_x, plot_y))
-        # found = self.find((slice_value, plot_x, plot_y))
     if view_direction == "y":
-        my_plot.basis = 'xz'
-        plot_x = (plot_left + plot_right)/2
-        plot_y= (plot_top+plot_bottom)/2
+        my_plot.basis = "xz"
         my_plot.origin = (plot_x, slice_value, plot_y)
-        width=plot_left-plot_right
-        height=plot_top-plot_bottom
-        my_plot.width = (width, height)
-        # found = openmc.lib.find_material((plot_x, slice_value, plot_y))
-        # found = self.find((plot_x, slice_value, plot_y))
 
-    
-    # my_plot.origin = (5.0, 2.0, 3.0)
-    # my_plot.width = (50., 50.)
-    my_plot.pixels = (400, 400)
-    
-
-    # my_plot.colors = {
-    #     water: (0, 0, 255),
-    #     clad: (0, 0, 0)
-    # }
+    my_plot.pixels = (pixels_across, pixels_up)
+    # my_plot.pixels = (100,100)
+    colors_dict = {}
+    for mat_id in mat_ids:
+        colors_dict[mat_id] = (mat_id, mat_id, mat_id)
+    my_plot.colors = colors_dict
+    my_plot.background = (0, 0, 0)  # void material is 0
+    my_plot.color_by = "material"
+    my_plot.id = 42  # the integer used to name of the plot_1.ppm file
     my_plots = openmc.Plots([my_plot])
     my_plots.export_to_xml(tmp_folder)
-    openmc.plot_geometry(cwd=tmp_folder)
+    openmc.plot_geometry(cwd=tmp_folder, output=False)
 
-
-    from PIL import Image
-
-    from numpy import asarray
+    print(f'Temporary ppm and xml files written to {tmp_folder}')
 
     # load the image
+    image = Image.open(Path(tmp_folder) / f"plot_{my_plot.id}.ppm")
 
-    image = Image.open('kolala.jpeg')
+    # convert the image to a numpy array
+    image_values = asarray(image)
 
-    # convert image to numpy array
+    # the image_values have three entries for RGB but we just need one.
+    # this reduces the nested list to contain a single value per pixel
+    image_value = [
+        [inner_entry[0] for inner_entry in outer_entry] for outer_entry in image_values
+    ]
 
-    data = asarray(image)
+    # replaces and 255 values with 0.
+    # 0 is the color for void space
+    # 255 gets returned by undefined regions outside the geometry
+    trimmed_image_value = [
+        [0 if x == 255 else x for x in inner_list] for inner_list in image_value
+    ]
 
-    # material_ids = []
-    # for plot_y in np.linspace(plot_top, plot_bottom, pixels_up):
-    #     row_material_ids = []
-    #     for plot_x in np.linspace(plot_left, plot_right, pixels_across):
-
-    #         try:
-                    
-    #             if view_direction == "z":
-    #                 found = openmc.lib.find_material((plot_x, plot_y, slice_value))
-    #                 # found = self.find((plot_x, plot_y, slice_value))
-    #             if view_direction == "x":
-    #                 found = openmc.lib.find_material((slice_value, plot_x, plot_y))
-    #                 # found = self.find((slice_value, plot_x, plot_y))
-    #             if view_direction == "y":
-    #                 found = openmc.lib.find_material((plot_x, slice_value, plot_y))
-    #                 # found = self.find((plot_x, slice_value, plot_y))
-
-    #             if found == None:
-    #                 found = 0
-    #             else:
-    #                 found = found.id
-    #         except openmc.exceptions.GeometryError:
-    #             found = 0
-    #         #     print(found)
-    #         #     print(found.id)
-    #         #     input()
-    #         row_material_ids.append(found)
-    #         # if len(found) >= 2:
-    #         #     if found[1].fill is not None:
-    #         #         mat = found[1].fill
-    #         #         row_material_ids.append(mat.id)
-    #         #     else:
-    #         #         row_material_ids.append(0)  # when material is "void"
-    #         # else:
-    #         #     row_material_ids.append(0)  # when material is "void"
-    #     material_ids.append(row_material_ids)
-    
-    # openmc.lib.finalize()
-    # return material_ids
+    return trimmed_image_value
 
 
 def get_slice_of_cell_ids(
@@ -288,19 +269,29 @@ def get_slice_of_cell_ids(
         raise ValueError('view_direction must be "x", "y" or "z"')
 
     if plot_left is None:
-        plot_left = self.get_side_extent(side="left", bounding_box=bb, view_direction=view_direction)
+        plot_left = self.get_side_extent(
+            side="left", bounding_box=bb, view_direction=view_direction
+        )
 
     if plot_right is None:
-        plot_right = self.get_side_extent(side="right", bounding_box=bb, view_direction=view_direction)
+        plot_right = self.get_side_extent(
+            side="right", bounding_box=bb, view_direction=view_direction
+        )
 
     if plot_bottom is None:
-        plot_bottom = self.get_side_extent(side="bottom", bounding_box=bb, view_direction=view_direction)
+        plot_bottom = self.get_side_extent(
+            side="bottom", bounding_box=bb, view_direction=view_direction
+        )
 
     if plot_top is None:
-        plot_top = self.get_side_extent(side="top", bounding_box=bb, view_direction=view_direction)
+        plot_top = self.get_side_extent(
+            side="top", bounding_box=bb, view_direction=view_direction
+        )
 
     if slice_value is None:
-        slice_value = self.get_mid_slice_value(bounding_box=bb, view_direction=view_direction)
+        slice_value = self.get_mid_slice_value(
+            bounding_box=bb, view_direction=view_direction
+        )
 
     plot_width = abs(plot_left - plot_right)
     plot_height = abs(plot_bottom - plot_top)
@@ -338,6 +329,3 @@ openmc.Geometry.get_axis_labels = get_axis_labels
 openmc.Geometry.get_slice_of_material_ids = get_slice_of_material_ids
 openmc.Geometry.get_slice_of_cell_ids = get_slice_of_cell_ids
 openmc.Geometry.find_cell_id = find_cell_id
-
-# setting default view direction
-openmc.Geometry.viewdirection = "x"

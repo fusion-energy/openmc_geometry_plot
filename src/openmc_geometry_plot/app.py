@@ -333,22 +333,21 @@ def main():
                             # + ": %{x} cm<br>"
                             # + ylabel[:2].title()
                             # + ": %{y} cm<br>",
-                    ),
-                    # outline
-                    go.Contour(
-                        z=data_slice,
-                        x0=plot_left,
-                        dx=abs(plot_left - plot_right) / (len(data_slice[0]) - 1),
-                        y0=plot_bottom,
-                        dy=abs(plot_bottom - plot_top) / (len(data_slice) - 1),
-                        contours_coloring='lines',
-                        line_width=1,
-                        colorscale=[[0, 'rgb(0, 0, 0)'], [1.0, 'rgb(0, 0, 0)']],
-                        showscale=False
-                    )
+                        ),
+                        # outline
+                        go.Contour(
+                            z=data_slice,
+                            x0=plot_left,
+                            dx=abs(plot_left - plot_right) / (len(data_slice[0]) - 1),
+                            y0=plot_bottom,
+                            dy=abs(plot_bottom - plot_top) / (len(data_slice) - 1),
+                            contours_coloring="lines",
+                            line_width=1,
+                            colorscale=[[0, "rgb(0, 0, 0)"], [1.0, "rgb(0, 0, 0)"]],
+                            showscale=False,
+                        ),
                     ]
                 )
-
 
                 plot.update_layout(
                     xaxis={"title": xlabel},

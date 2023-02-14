@@ -37,14 +37,14 @@ plot_right = 100
 plot_bottom = 200
 plot_top = -200
 data_slice = my_geometry.get_slice_of_material_ids(
-    view_direction='x',
+    view_direction="x",
     plot_left=plot_left,
     plot_right=plot_right,
     plot_bottom=plot_bottom,
     plot_top=plot_top,
 )
 
-xlabel, ylabel = my_geometry.get_axis_labels(view_direction='x')
+xlabel, ylabel = my_geometry.get_axis_labels(view_direction="x")
 plt.xlabel(xlabel)
 plt.ylabel(ylabel)
 

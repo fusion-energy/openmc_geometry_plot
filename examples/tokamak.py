@@ -95,38 +95,37 @@ import numpy as np
 import matplotlib.pylab as plt
 
 
+# import time
+# for x in range(2):
+#     start_time = time.time()
+#     data_slice = my_geometry.get_slice_of_material_ids(view_direction='x')
+#     print("--- %s seconds ---" % (time.time() - start_time))
 
-import time
-for x in range(2):
-    start_time = time.time()
-    data_slice = my_geometry.get_slice_of_material_ids(view_direction='x')
-    print("--- %s seconds ---" % (time.time() - start_time))
 
+data_slice = my_geometry.get_slice_of_material_ids(view_direction="x")
+xlabel, ylabel = my_geometry.get_axis_labels(view_direction="x")
+plt.xlabel(xlabel)
+plt.ylabel(ylabel)
 
-# data_slice = my_geometry.get_slice_of_material_ids(view_direction='x')
-# xlabel, ylabel = my_geometry.get_axis_labels(view_direction='x')
-# plt.xlabel(xlabel)
-# plt.ylabel(ylabel)
+plot_extent = my_geometry.get_mpl_plot_extent(view_direction="x")
 
-# plot_extent = my_geometry.get_mpl_plot_extent(view_direction='x')
+plt.imshow(
+    data_slice,
+    extent=plot_extent,
+    interpolation="none",
+)
 
-# plt.imshow(
-#     data_slice,
-#     extent=plot_extent,
-#     interpolation="none",
-# )
+# gets unique levels for outlines contour plot
+levels = np.unique([item for sublist in data_slice for item in sublist])
 
-# # gets unique levels for outlines contour plot
-# levels = np.unique([item for sublist in data_slice for item in sublist])
+plt.contour(
+    data_slice,
+    origin="upper",
+    colors="k",
+    linestyles="solid",
+    levels=levels,
+    linewidths=0.5,
+    extent=plot_extent,
+)
 
-# plt.contour(
-#     data_slice,
-#     origin="upper",
-#     colors="k",
-#     linestyles="solid",
-#     levels=levels,
-#     linewidths=0.5,
-#     extent=plot_extent,
-# )
-
-# plt.show()
+plt.show()

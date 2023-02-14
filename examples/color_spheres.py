@@ -44,9 +44,9 @@ my_geometry = openmc.Geometry(
 
 # this part plots the geometry with colors
 
-data_slice = my_geometry.get_slice_of_material_ids(view_direction = "z")
+data_slice = my_geometry.get_slice_of_material_ids(view_direction="z")
 
-xlabel, ylabel = my_geometry.get_axis_labels(view_direction = "z")
+xlabel, ylabel = my_geometry.get_axis_labels(view_direction="z")
 plt.xlabel(xlabel)
 plt.ylabel(ylabel)
 
@@ -58,7 +58,7 @@ cmap = colors.ListedColormap(["white", "red", "blue"])
 bounds = [0, 1, 2, 3]
 norm = colors.BoundaryNorm(bounds, cmap.N)
 
-plot_extent = my_geometry.get_mpl_plot_extent(view_direction = "z")
+plot_extent = my_geometry.get_mpl_plot_extent(view_direction="z")
 plt.imshow(
     data_slice,
     extent=plot_extent,
