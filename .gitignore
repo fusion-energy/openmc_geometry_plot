@@ -140,3 +140,4 @@ _version.py
 *.out
 *.xml
 *.ppm
+*.vtk

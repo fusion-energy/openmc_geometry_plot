@@ -10,6 +10,37 @@ from PIL import Image
 from numpy import asarray
 
 
+def get_plot_extent(self, plot_left, plot_right, plot_bottom, plot_top, slice_value, bb, view_direction):
+
+    if view_direction not in ["x", "y", "z"]:
+        raise ValueError('view_direction must be "x", "y" or "z"')
+
+    if plot_left is None:
+        plot_left = self.get_side_extent(
+            side="left", bounding_box=bb, view_direction=view_direction
+        )
+
+    if plot_right is None:
+        plot_right = self.get_side_extent(
+            side="right", bounding_box=bb, view_direction=view_direction
+        )
+
+    if plot_bottom is None:
+        plot_bottom = self.get_side_extent(
+            side="bottom", bounding_box=bb, view_direction=view_direction
+        )
+
+    if plot_top is None:
+        plot_top = self.get_side_extent(
+            side="top", bounding_box=bb, view_direction=view_direction
+        )
+
+    if slice_value is None:
+        slice_value = self.get_mid_slice_value(
+            bounding_box=bb, view_direction=view_direction
+        )
+    return plot_left, plot_right, plot_bottom, plot_top, slice_value
+
 def get_side_extent(self, side: str, view_direction: str, bounding_box=None):
 
     if bounding_box is None:
@@ -124,36 +155,38 @@ def get_slice_of_material_ids(
         pixels_across:
     """
 
-    # if any of the plot_ are None then this needs calculating
-    bb = self.bounding_box
+    tmp_folder = mkdtemp(prefix="openmc_geometry_plotter_tmp_files")
+    print(tmp_folder)
 
-    if view_direction not in ["x", "y", "z"]:
-        raise ValueError('view_direction must be "x", "y" or "z"')
+    self.export_to_xml(tmp_folder)
 
-    if plot_left is None:
-        plot_left = self.get_side_extent(
-            side="left", bounding_box=bb, view_direction=view_direction
-        )
+    with open(Path(tmp_folder)/'geometry.xml', 'r') as file:
+        data = file.read().replace('\n', '')
+    if '<dagmc_universe filename="' in data:
+        dag = True
+        import os
+        os.system(f'cp dagmc.h5m {tmp_folder}')
 
-    if plot_right is None:
-        plot_right = self.get_side_extent(
-            side="right", bounding_box=bb, view_direction=view_direction
-        )
+        # dagmuniverse does not have a get_all_materials
+        mat_names = self.root_universe.cells[10000].fill.material_names
+        mat_ids = range(1, len(mat_names)+1)
 
-    if plot_bottom is None:
-        plot_bottom = self.get_side_extent(
-            side="bottom", bounding_box=bb, view_direction=view_direction
-        )
+        # if any of the plot_ are None then this needs calculating
+        bb = self.root_universe.cells[10000].fill.bounding_box
+    else:
+        dag = False
 
-    if plot_top is None:
-        plot_top = self.get_side_extent(
-            side="top", bounding_box=bb, view_direction=view_direction
-        )
+        original_materials = self.get_all_materials()
+        mat_ids = original_materials.keys()
 
-    if slice_value is None:
-        slice_value = self.get_mid_slice_value(
-            bounding_box=bb, view_direction=view_direction
-        )
+        mat_names = []
+        for key, value in original_materials.items():
+            mat_names.append(value.name)
+
+        # if any of the plot_ are None then this needs calculating
+        bb = self.bounding_box
+
+    plot_left, plot_right, plot_bottom, plot_top, slice_value = self.get_plot_extent(plot_left, plot_right, plot_bottom, plot_top, slice_value, bb, view_direction)
 
     plot_width = abs(plot_left - plot_right)
     plot_height = abs(plot_bottom - plot_top)
@@ -161,20 +194,31 @@ def get_slice_of_material_ids(
     aspect_ratio = plot_height / plot_width
     pixels_up = int(pixels_across * aspect_ratio)
 
-    original_materials = self.get_all_materials()
-    mat_ids = original_materials.keys()
-
     all_materials = []
-    for i in mat_ids:
-        print(i, mat_ids)
-        n = openmc.Material()
-        n.id = i
-        n.add_nuclide("He4", 1)
-        all_materials.append(n)
+    for i, n in zip(mat_ids, mat_names):
+        print(i, n)
+        new_mat = openmc.Material()
+        new_mat.id = i
+        new_mat.name = n
+        new_mat.add_nuclide("He4", 1)
+        all_materials.append(new_mat)
     nn = openmc.Materials(all_materials)
-    tmp_folder = mkdtemp(prefix="openmc_geometry_plotter_tmp_files")
     nn.export_to_xml(tmp_folder)
-    self.export_to_xml(tmp_folder)
+
+    # if a dagmc model is present we copy the h5m file to the tmp folder
+    print(self.__dict__)
+    print(self)
+    print(self)
+    print(self)
+    print(self)
+
+    # if isinstance(self.root, openmc.DAGMCUniverse):
+    #     print(self.root.filename)
+    #     print(self.root.filename)
+    #     print(self.root.filename)
+    #     print(self.root.filename)
+    #     print(self.root.filename)
+    #TODO check for DAGMCUniverse anywhere in the geometry, not just root
 
     my_settings = openmc.Settings()
     my_settings.output = {"summary": False, "tallies": False}
@@ -274,33 +318,7 @@ def get_slice_of_cell_ids(
 
     bb = self.bounding_box
 
-    if view_direction not in ["x", "y", "z"]:
-        raise ValueError('view_direction must be "x", "y" or "z"')
-
-    if plot_left is None:
-        plot_left = self.get_side_extent(
-            side="left", bounding_box=bb, view_direction=view_direction
-        )
-
-    if plot_right is None:
-        plot_right = self.get_side_extent(
-            side="right", bounding_box=bb, view_direction=view_direction
-        )
-
-    if plot_bottom is None:
-        plot_bottom = self.get_side_extent(
-            side="bottom", bounding_box=bb, view_direction=view_direction
-        )
-
-    if plot_top is None:
-        plot_top = self.get_side_extent(
-            side="top", bounding_box=bb, view_direction=view_direction
-        )
-
-    if slice_value is None:
-        slice_value = self.get_mid_slice_value(
-            bounding_box=bb, view_direction=view_direction
-        )
+    plot_left, plot_right, plot_bottom, plot_top, slice_value = self.get_plot_extent(plot_left, plot_right, plot_bottom, plot_top, slice_value, bb, view_direction)
 
     plot_width = abs(plot_left - plot_right)
     plot_height = abs(plot_bottom - plot_top)
@@ -399,6 +417,7 @@ def get_slice_of_cell_ids(
 
 # patching openmc
 
+openmc.Geometry.get_plot_extent = get_plot_extent
 openmc.Geometry.get_side_extent = get_side_extent
 openmc.Geometry.get_mpl_plot_extent = get_mpl_plot_extent
 openmc.Geometry.get_mid_slice_value = get_mid_slice_value
