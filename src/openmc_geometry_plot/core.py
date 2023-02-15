@@ -308,26 +308,94 @@ def get_slice_of_cell_ids(
     aspect_ratio = plot_height / plot_width
     pixels_up = int(pixels_across * aspect_ratio)
 
-    cell_ids = []
-    for plot_y in np.linspace(plot_top, plot_bottom, pixels_up):
-        row_cell_ids = []
-        for plot_x in np.linspace(plot_left, plot_right, pixels_across):
+    original_materials = self.get_all_materials()
+    cell_ids = self.get_all_cells().keys()
+    mat_ids = original_materials.keys()
 
-            if view_direction == "z":
-                found = self.find((plot_x, plot_y, slice_value))
-            if view_direction == "x":
-                found = self.find((slice_value, plot_x, plot_y))
-            if view_direction == "y":
-                found = self.find((plot_x, slice_value, plot_y))
+    all_materials = []
+    for i in mat_ids:
+        print(i, mat_ids)
+        n = openmc.Material()
+        n.id = i
+        n.add_nuclide("He4", 1)
+        all_materials.append(n)
+    nn = openmc.Materials(all_materials)
+    tmp_folder = mkdtemp(prefix="openmc_geometry_plotter_tmp_files")
+    nn.export_to_xml(tmp_folder)
+    self.export_to_xml(tmp_folder)
 
-            if len(found) >= 2:
-                id = found[1].id
-                row_cell_ids.append(id)
-            else:
-                row_cell_ids.append(0)
-        cell_ids.append(row_cell_ids)
-    return cell_ids
+    my_settings = openmc.Settings()
+    my_settings.output = {"summary": False, "tallies": False}
+    # add verbose setting to avoid print out
+    my_settings.particles = 1
+    my_settings.batches = 1
+    my_settings.run_mode = "fixed source"
+    my_settings.export_to_xml(tmp_folder)
 
+    my_plot = openmc.Plot()
+
+    plot_x = (plot_left + plot_right) / 2
+    plot_y = (plot_top + plot_bottom) / 2
+
+    width = plot_left - plot_right
+    height = plot_top - plot_bottom
+    my_plot.width = (width, height)
+
+    if view_direction == "z":
+        my_plot.basis = "xy"
+        my_plot.origin = (plot_x, plot_y, slice_value)
+    if view_direction == "x":
+        my_plot.basis = "xz"
+        my_plot.origin = (slice_value, plot_x, plot_y)
+    if view_direction == "y":
+        my_plot.basis = "xz"
+        my_plot.origin = (plot_x, slice_value, plot_y)
+
+    my_plot.pixels = (pixels_across, pixels_up)
+    # my_plot.pixels = (100,100)
+    colors_dict = {}
+    for cell_id in cell_ids:
+        colors_dict[cell_id] = (cell_id, cell_id, cell_id)
+    my_plot.colors = colors_dict
+    my_plot.background = (0, 0, 0)  # void material is 0
+    my_plot.color_by = "cell"
+    my_plot.id = 24  # the integer used to name of the plot_1.ppm file
+    my_plots = openmc.Plots([my_plot])
+    my_plots.export_to_xml(tmp_folder)
+
+    #TODO unset this afterwards
+    package_dir = Path(__file__).parent
+    openmc.config['cross_sections'] = package_dir/'cross_sections.xml'
+
+    openmc.plot_geometry(cwd=tmp_folder)#, output=False)
+
+    print(f'Temporary image and xml files written to {tmp_folder}')
+
+    # load the image
+    if (Path(tmp_folder) / f"plot_{my_plot.id}.ppm").is_file():
+        image = Image.open(Path(tmp_folder) / f"plot_{my_plot.id}.ppm")
+    elif (Path(tmp_folder) / f"plot_{my_plot.id}.png").is_file():
+        image = Image.open(Path(tmp_folder) / f"plot_{my_plot.id}.png")
+    else:
+        raise FileNotFoundError(f'openmc plot mode image was not found in {tmp_folder}')
+
+    # convert the image to a numpy array
+    image_values = asarray(image)
+
+    # the image_values have three entries for RGB but we just need one.
+    # this reduces the nested list to contain a single value per pixel
+    image_value = [
+        [inner_entry[0] for inner_entry in outer_entry] for outer_entry in image_values
+    ]
+
+    # replaces and 255 values with 0.
+    # 0 is the color for void space
+    # 255 gets returned by undefined regions outside the geometry
+    trimmed_image_value = [
+        [0 if x == 255 else x for x in inner_list] for inner_list in image_value
+    ]
+
+    return trimmed_image_value
 
 # patching openmc
 
