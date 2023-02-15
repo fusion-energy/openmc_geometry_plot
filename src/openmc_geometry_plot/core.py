@@ -224,9 +224,9 @@ def get_slice_of_material_ids(
     print(f'Temporary image and xml files written to {tmp_folder}')
 
     # load the image
-    if (Path(tmp_folder) / f"plot_{my_plot.id}.ppm").is_file:
+    if (Path(tmp_folder) / f"plot_{my_plot.id}.ppm").is_file():
         image = Image.open(Path(tmp_folder) / f"plot_{my_plot.id}.ppm")
-    elif (Path(tmp_folder) / f"plot_{my_plot.id}.png").is_file:
+    elif (Path(tmp_folder) / f"plot_{my_plot.id}.png").is_file():
         image = Image.open(Path(tmp_folder) / f"plot_{my_plot.id}.png")
     else:
         raise FileNotFoundError(f'openmc plot mode image was not found in {tmp_folder}')
