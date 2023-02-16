@@ -59,22 +59,44 @@ def main():
 
     header()
 
-    st.write(
+    file_col1, file_col2 = st.columns([1, 1])
+    file_col1.write(
         """
             👉 Create your ```openmc.Geometry()``` and export the geometry xml file using ```export_to_xml()```.
         """
     )
-    geometry_xml_file = st.file_uploader("Upload your geometry.xml", type=["xml"])
+    file_col2.write(
+        """
+            👉 Create your DAGMC h5m file using tools like [CAD-to-h5m](https://github.com/fusion-energy/cad_to_dagmc), [STL-to_h5m](https://github.com/fusion-energy/stl_to_h5m) [vertices-to-h5m](https://github.com/fusion-energy/vertices_to_h5m), [Brep-to-h5m](https://github.com/fusion-energy/brep_to_h5m) or the [Cubit](https://coreform.com/products/coreform-cubit/) [Plugin](https://github.com/svalinn/Cubit-plugin)
+        """
+    )
+    geometry_xml_file = file_col1.file_uploader("Upload your geometry.xml", type=["xml"])
+    dagmc_file = file_col2.file_uploader("Upload your DAGMC h5m", type=["h5m"])
 
-    if geometry_xml_file == None:
-        new_title = '<p style="font-family:sans-serif; color:Red; font-size: 30px;">Upload your geometry.xml</p>'
+    my_geometry = None
+
+    if dagmc_file == None and geometry_xml_file == None:
+        new_title = '<center><p style="font-family:sans-serif; color:Red; font-size: 30px;">Upload your geometry.xml or DAGMC h5m file</p></center>'
         st.markdown(new_title, unsafe_allow_html=True)
 
-        st.markdown(
-            'Not got xml files handy? Download sample [geometry.xml](https://raw.githubusercontent.com/fusion-energy/openmc_plot/main/examples/tokamak/geometry.xml "download")'
-        )
+        sub_title='<center><p> Not got geometry files handy? Download an example <a href="https://raw.githubusercontent.com/fusion-energy/openmc_plot/main/examples/tokamak/geometry.xml" download>geometry.xml</a> or DAGMC h5m file</p></center>'
+        st.markdown(sub_title, unsafe_allow_html=True)
 
-    else:
+    # DAGMC route
+    elif dagmc_file != None and geometry_xml_file != None :
+        st.markdown('DAGMC geometry not yet supported, work in progress')
+
+        # make a basic openmc geometry
+
+    elif dagmc_file != None and geometry_xml_file == None :
+        st.markdown('DAGMC geometry not yet supported, work in progress')
+
+        # find all material names
+
+        # make a pretend material for each one
+
+    # CSG route
+    elif dagmc_file == None and geometry_xml_file != None :
 
         save_uploadedfile(geometry_xml_file)
 
@@ -106,10 +128,10 @@ def main():
         my_geometry = openmc.Geometry.from_xml(
             path=geometry_xml_file.name, materials=my_mats
         )
+    
+    if my_geometry:
 
-        my_universe = my_geometry.root_universe
-
-        bb = my_universe.bounding_box
+        bb = my_geometry.bounding_box
 
         col1, col2 = st.columns([1, 3])
 
@@ -253,10 +275,10 @@ def main():
         )
 
         if plot_left and plot_right and plot_top and plot_bottom:
-            my_geometry.view_direction = view_direction
 
             if color_by == "cells":
                 data_slice = my_geometry.get_slice_of_cell_ids(
+                    view_direction=view_direction,
                     plot_left=plot_left,
                     plot_right=plot_right,
                     plot_top=plot_top,
@@ -265,6 +287,7 @@ def main():
                 )
             elif color_by == "materials":
                 data_slice = my_geometry.get_slice_of_material_ids(
+                    view_direction=view_direction,
                     plot_left=plot_left,
                     plot_right=plot_right,
                     plot_top=plot_top,
@@ -272,12 +295,12 @@ def main():
                     pixels_across=pixels_across,
                 )
 
-            (xlabel, ylabel) = my_geometry.get_axis_labels()
+            (xlabel, ylabel) = my_geometry.get_axis_labels(view_direction=view_direction)
             if backend == "matplotlib":
 
                 plt.imshow(
                     data_slice,
-                    extent=my_geometry.get_mpl_plot_extent(),
+                    extent=my_geometry.get_mpl_plot_extent(view_direction=view_direction),
                     interpolation="none",
                 )
 
@@ -297,7 +320,7 @@ def main():
                         linestyles="solid",
                         levels=levels,
                         linewidths=0.5,
-                        extent=my_geometry.get_mpl_plot_extent(),
+                        extent=my_geometry.get_mpl_plot_extent(view_direction=view_direction),
                     )
 
                 plt.savefig("openmc_plot_geometry_image.png")
