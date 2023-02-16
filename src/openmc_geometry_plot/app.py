@@ -56,7 +56,6 @@ def header():
 
 
 def main():
-
     header()
 
     file_col1, file_col2 = st.columns([1, 1])
@@ -70,7 +69,9 @@ def main():
             👉 Create your DAGMC h5m file using tools like [CAD-to-h5m](https://github.com/fusion-energy/cad_to_dagmc), [STL-to_h5m](https://github.com/fusion-energy/stl_to_h5m) [vertices-to-h5m](https://github.com/fusion-energy/vertices_to_h5m), [Brep-to-h5m](https://github.com/fusion-energy/brep_to_h5m) or the [Cubit](https://coreform.com/products/coreform-cubit/) [Plugin](https://github.com/svalinn/Cubit-plugin)
         """
     )
-    geometry_xml_file = file_col1.file_uploader("Upload your geometry.xml", type=["xml"])
+    geometry_xml_file = file_col1.file_uploader(
+        "Upload your geometry.xml", type=["xml"]
+    )
     dagmc_file = file_col2.file_uploader("Upload your DAGMC h5m", type=["h5m"])
 
     my_geometry = None
@@ -79,25 +80,24 @@ def main():
         new_title = '<center><p style="font-family:sans-serif; color:Red; font-size: 30px;">Upload your geometry.xml or DAGMC h5m file</p></center>'
         st.markdown(new_title, unsafe_allow_html=True)
 
-        sub_title='<center><p> Not got geometry files handy? Download an example <a href="https://raw.githubusercontent.com/fusion-energy/openmc_plot/main/examples/tokamak/geometry.xml" download>geometry.xml</a> or DAGMC h5m file</p></center>'
+        sub_title = '<center><p> Not got geometry files handy? Download an example <a href="https://raw.githubusercontent.com/fusion-energy/openmc_plot/main/examples/tokamak/geometry.xml" download>geometry.xml</a> or DAGMC h5m file</p></center>'
         st.markdown(sub_title, unsafe_allow_html=True)
 
     # DAGMC route
-    elif dagmc_file != None and geometry_xml_file != None :
-        st.markdown('DAGMC geometry not yet supported, work in progress')
+    elif dagmc_file != None and geometry_xml_file != None:
+        st.markdown("DAGMC geometry not yet supported, work in progress")
 
         # make a basic openmc geometry
 
-    elif dagmc_file != None and geometry_xml_file == None :
-        st.markdown('DAGMC geometry not yet supported, work in progress')
+    elif dagmc_file != None and geometry_xml_file == None:
+        st.markdown("DAGMC geometry not yet supported, work in progress")
 
         # find all material names
 
         # make a pretend material for each one
 
     # CSG route
-    elif dagmc_file == None and geometry_xml_file != None :
-
+    elif dagmc_file == None and geometry_xml_file != None:
         save_uploadedfile(geometry_xml_file)
 
         tree = ET.parse(geometry_xml_file.name)
@@ -128,9 +128,8 @@ def main():
         my_geometry = openmc.Geometry.from_xml(
             path=geometry_xml_file.name, materials=my_mats
         )
-    
-    if my_geometry:
 
+    if my_geometry:
         bb = my_geometry.bounding_box
 
         col1, col2 = st.columns([1, 3])
@@ -169,7 +168,6 @@ def main():
         y_min, y_max = None, None
 
         if view_direction in ["z"]:
-
             # x axis is x values
             if np.isinf(bb[0][0]) or np.isinf(bb[1][0]):
                 x_min = col1.number_input(
@@ -195,7 +193,6 @@ def main():
                 y_max = float(bb[1][1])
 
         if view_direction in ["y"]:
-
             # x axis is x values
             if np.isinf(bb[0][0]) or np.isinf(bb[1][0]):
                 x_min = col1.number_input(
@@ -221,7 +218,6 @@ def main():
                 y_max = float(bb[1][2])
 
         if view_direction in ["x"]:
-
             # x axis is y values
             if np.isinf(bb[0][1]) or np.isinf(bb[1][1]):
                 x_min = col1.number_input(label="minimum vertical axis value")
@@ -275,7 +271,6 @@ def main():
         )
 
         if plot_left and plot_right and plot_top and plot_bottom:
-
             if color_by == "cells":
                 data_slice = my_geometry.get_slice_of_cell_ids(
                     view_direction=view_direction,
@@ -295,12 +290,15 @@ def main():
                     pixels_across=pixels_across,
                 )
 
-            (xlabel, ylabel) = my_geometry.get_axis_labels(view_direction=view_direction)
+            (xlabel, ylabel) = my_geometry.get_axis_labels(
+                view_direction=view_direction
+            )
             if backend == "matplotlib":
-
                 plt.imshow(
                     data_slice,
-                    extent=my_geometry.get_mpl_plot_extent(view_direction=view_direction),
+                    extent=my_geometry.get_mpl_plot_extent(
+                        view_direction=view_direction
+                    ),
                     interpolation="none",
                 )
 
@@ -320,7 +318,9 @@ def main():
                         linestyles="solid",
                         levels=levels,
                         linewidths=0.5,
-                        extent=my_geometry.get_mpl_plot_extent(view_direction=view_direction),
+                        extent=my_geometry.get_mpl_plot_extent(
+                            view_direction=view_direction
+                        ),
                     )
 
                 plt.savefig("openmc_plot_geometry_image.png")
@@ -335,7 +335,6 @@ def main():
                         mime="image/png",
                     )
             else:
-
                 plot = go.Figure(
                     data=[
                         go.Heatmap(

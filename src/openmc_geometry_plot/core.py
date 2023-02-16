@@ -10,8 +10,9 @@ from PIL import Image
 from numpy import asarray
 
 
-def get_plot_extent(self, plot_left, plot_right, plot_bottom, plot_top, slice_value, bb, view_direction):
-
+def get_plot_extent(
+    self, plot_left, plot_right, plot_bottom, plot_top, slice_value, bb, view_direction
+):
     if view_direction not in ["x", "y", "z"]:
         raise ValueError('view_direction must be "x", "y" or "z"')
 
@@ -43,7 +44,6 @@ def get_plot_extent(self, plot_left, plot_right, plot_bottom, plot_top, slice_va
 
 
 def get_side_extent(self, side: str, view_direction: str, bounding_box=None):
-
     if bounding_box is None:
         bounding_box = self.bounding_box
 
@@ -146,7 +146,7 @@ def get_dagmc_filepath(self):
         if isinstance(univ, openmc.DAGMCUniverse):
             return Path(univ.filename).absolute()
             # could try relative paths for more complex filenames
-            #return Path(univ.filename).relative_to(Path(__file__).parent)
+            # return Path(univ.filename).relative_to(Path(__file__).parent)
 
 
 def get_dagmc_universe(self):
@@ -179,18 +179,18 @@ def get_slice_of_material_ids(
     """
 
     tmp_folder = mkdtemp(prefix="openmc_geometry_plotter_tmp_files_")
-    print(f'writing files to {tmp_folder}')
+    print(f"writing files to {tmp_folder}")
 
     if self.is_geometry_dagmc():
-
         dagmc_abs_filepath = self.get_dagmc_filepath()
         import os
-        os.system(f'cp {dagmc_abs_filepath} {tmp_folder}')
+
+        os.system(f"cp {dagmc_abs_filepath} {tmp_folder}")
 
         dag_universe = self.get_dagmc_universe()
 
         if str(Path(dag_universe.filename).name) != str(Path(dag_universe.filename)):
-            msg = f'Paths for dagmc files that contain folders are not currently supported. Try setting your DAGMCUniverse.filename to {Path(dag_universe.filename).name} instead of {Path(dag_universe.filename)}'
+            msg = f"Paths for dagmc files that contain folders are not currently supported. Try setting your DAGMCUniverse.filename to {Path(dag_universe.filename).name} instead of {Path(dag_universe.filename)}"
             raise IsADirectoryError(msg)
         # dag_universe.filename = dagmc_abs_filepath.name
 
@@ -200,14 +200,13 @@ def get_slice_of_material_ids(
         # mat ids are not known by the dagmc file
         # assumed mat ids start at 1 and continue,
         # universe.n_cells is the equivilent approximation for cell ids
-        mat_ids = range(1, len(mat_names)+1)
+        mat_ids = range(1, len(mat_names) + 1)
 
         # if any of the plot_ are None then this needs calculating
         # might need to be self.bounding_box
         bb = dag_universe.bounding_box
 
     else:
-
         original_materials = self.get_all_materials()
         mat_ids = original_materials.keys()
 
@@ -217,10 +216,12 @@ def get_slice_of_material_ids(
 
         # if any of the plot_ are None then this needs calculating
         bb = self.bounding_box
-    
+
     self.export_to_xml(tmp_folder)
 
-    plot_left, plot_right, plot_bottom, plot_top, slice_value = self.get_plot_extent(plot_left, plot_right, plot_bottom, plot_top, slice_value, bb, view_direction)
+    plot_left, plot_right, plot_bottom, plot_top, slice_value = self.get_plot_extent(
+        plot_left, plot_right, plot_bottom, plot_top, slice_value, bb, view_direction
+    )
 
     plot_width = abs(plot_left - plot_right)
     plot_height = abs(plot_bottom - plot_top)
@@ -277,13 +278,13 @@ def get_slice_of_material_ids(
     my_plots = openmc.Plots([my_plot])
     my_plots.export_to_xml(tmp_folder)
 
-    #TODO unset this afterwards
+    # TODO unset this afterwards
     package_dir = Path(__file__).parent
-    openmc.config['cross_sections'] = package_dir/'cross_sections.xml'
+    openmc.config["cross_sections"] = package_dir / "cross_sections.xml"
 
-    openmc.plot_geometry(cwd=tmp_folder)#, output=False)
+    openmc.plot_geometry(cwd=tmp_folder)  # , output=False)
 
-    print(f'Temporary image and xml files written to {tmp_folder}')
+    print(f"Temporary image and xml files written to {tmp_folder}")
 
     # load the image
     if (Path(tmp_folder) / f"plot_{my_plot.id}.ppm").is_file():
@@ -291,7 +292,7 @@ def get_slice_of_material_ids(
     elif (Path(tmp_folder) / f"plot_{my_plot.id}.png").is_file():
         image = Image.open(Path(tmp_folder) / f"plot_{my_plot.id}.png")
     else:
-        raise FileNotFoundError(f'openmc plot mode image was not found in {tmp_folder}')
+        raise FileNotFoundError(f"openmc plot mode image was not found in {tmp_folder}")
 
     # convert the image to a numpy array
     image_values = asarray(image)
@@ -335,11 +336,13 @@ def get_slice_of_cell_ids(
         pixels_across:
     """
     if self.is_geometry_dagmc():
-        msg='DAGMC models are not yet supported by get_slice_of_cell_ids, DAGMC models are supported by the get_slice_of_material_ids method.'
+        msg = "DAGMC models are not yet supported by get_slice_of_cell_ids, DAGMC models are supported by the get_slice_of_material_ids method."
         raise ValueError(msg)
     bb = self.bounding_box
 
-    plot_left, plot_right, plot_bottom, plot_top, slice_value = self.get_plot_extent(plot_left, plot_right, plot_bottom, plot_top, slice_value, bb, view_direction)
+    plot_left, plot_right, plot_bottom, plot_top, slice_value = self.get_plot_extent(
+        plot_left, plot_right, plot_bottom, plot_top, slice_value, bb, view_direction
+    )
 
     plot_width = abs(plot_left - plot_right)
     plot_height = abs(plot_bottom - plot_top)
@@ -402,13 +405,13 @@ def get_slice_of_cell_ids(
     my_plots = openmc.Plots([my_plot])
     my_plots.export_to_xml(tmp_folder)
 
-    #TODO unset this afterwards
+    # TODO unset this afterwards
     package_dir = Path(__file__).parent
-    openmc.config['cross_sections'] = package_dir/'cross_sections.xml'
+    openmc.config["cross_sections"] = package_dir / "cross_sections.xml"
 
-    openmc.plot_geometry(cwd=tmp_folder)#, output=False)
+    openmc.plot_geometry(cwd=tmp_folder)  # , output=False)
 
-    print(f'Temporary image and xml files written to {tmp_folder}')
+    print(f"Temporary image and xml files written to {tmp_folder}")
 
     # load the image
     if (Path(tmp_folder) / f"plot_{my_plot.id}.ppm").is_file():
@@ -416,7 +419,7 @@ def get_slice_of_cell_ids(
     elif (Path(tmp_folder) / f"plot_{my_plot.id}.png").is_file():
         image = Image.open(Path(tmp_folder) / f"plot_{my_plot.id}.png")
     else:
-        raise FileNotFoundError(f'openmc plot mode image was not found in {tmp_folder}')
+        raise FileNotFoundError(f"openmc plot mode image was not found in {tmp_folder}")
 
     # convert the image to a numpy array
     image_values = asarray(image)
@@ -435,6 +438,7 @@ def get_slice_of_cell_ids(
     ]
 
     return trimmed_image_value
+
 
 # patching openmc
 

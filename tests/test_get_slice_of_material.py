@@ -4,7 +4,6 @@ import numpy as np
 
 
 def test_get_slice_of_material_ids():
-
     openmc_material = openmc.Material()
     openmc_material.id = 1
 
