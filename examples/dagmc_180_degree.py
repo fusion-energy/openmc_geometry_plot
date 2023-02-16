@@ -7,38 +7,27 @@ import openmc
 import openmc_geometry_plot  # adds plot_axis_slice to openmc.Geometry
 from pathlib import Path
 
-breeder_material = openmc.Material()
-breeder_material.add_element("Li", 1.0)
-breeder_material.set_density("g/cm3", 0.01)
+import numpy as np
+import matplotlib.pylab as plt
 
-copper_material = openmc.Material()
-copper_material.set_density("g/cm3", 0.01)
-copper_material.add_element("Cu", 1.0)
-
-eurofer_material = openmc.Material()
-eurofer_material.set_density("g/cm3", 0.01)
-eurofer_material.add_element("Fe", 1)
+# very minimal openmc.Geoemtry made just from a single DAGMC file with a bounding surface
 
 bound_dag_univ = openmc.DAGMCUniverse(filename='dagmc.h5m').bounded_universe()
 my_geometry = openmc.Geometry(root=bound_dag_univ)
 
+
 # example code for plotting materials of the geometry with an outline
 
-import numpy as np
-import matplotlib.pylab as plt
-
-
 data_slice = my_geometry.get_slice_of_material_ids(
-    view_direction="x",
+    view_direction="z",
     slice_value=1,
-    plot_left=-500
-
 )
-xlabel, ylabel = my_geometry.get_axis_labels(view_direction="x")
+
+xlabel, ylabel = my_geometry.get_axis_labels(view_direction="z")
 plt.xlabel(xlabel)
 plt.ylabel(ylabel)
 
-plot_extent = my_geometry.get_mpl_plot_extent(view_direction="x")
+plot_extent = my_geometry.get_mpl_plot_extent(view_direction="z")
 
 plt.imshow(
     data_slice,

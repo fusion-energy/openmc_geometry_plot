@@ -35,14 +35,15 @@ jobs:
 
       - name: Run tests
         run: |
+          cd tests
           pytest -v
 
       - name: Run examples
         run: |
           cd examples
-          python examples/csg_color_spheres.py
-          python examples/csg_color_spheres_with_legend.py
-          python examples/csg_cylinder_box.py
-          python examples/csg_inf_cylinder.py
-          python examples/csg_tokamak.py
-          python examples/dagmc_180_degree.py
+          python csg_color_spheres.py
+          python csg_color_spheres_with_legend.py
+          python csg_cylinder_box.py
+          python csg_inf_cylinder.py
+          python csg_tokamak.py
+          python dagmc_180_degree.py

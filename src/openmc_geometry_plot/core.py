@@ -41,6 +41,7 @@ def get_plot_extent(self, plot_left, plot_right, plot_bottom, plot_top, slice_va
         )
     return plot_left, plot_right, plot_bottom, plot_top, slice_value
 
+
 def get_side_extent(self, side: str, view_direction: str, bounding_box=None):
 
     if bounding_box is None:
@@ -132,6 +133,28 @@ def find_cell_id(self, inputs):
     return self.find((plot_x, plot_y, slice_value))
 
 
+def is_geometry_dagmc(self):
+    for univ in self.get_all_universes().values():
+        if isinstance(univ, openmc.DAGMCUniverse):
+            return True
+    return False
+
+
+def get_dagmc_filepath(self):
+    "absolute path"
+    for univ in self.get_all_universes().values():
+        if isinstance(univ, openmc.DAGMCUniverse):
+            return Path(univ.filename).absolute()
+            # could try relative paths for more complex filenames
+            #return Path(univ.filename).relative_to(Path(__file__).parent)
+
+
+def get_dagmc_universe(self):
+    for univ in self.get_all_universes().values():
+        if isinstance(univ, openmc.DAGMCUniverse):
+            return univ
+
+
 def get_slice_of_material_ids(
     self,
     view_direction: str,
@@ -155,26 +178,35 @@ def get_slice_of_material_ids(
         pixels_across:
     """
 
-    tmp_folder = mkdtemp(prefix="openmc_geometry_plotter_tmp_files")
-    print(tmp_folder)
+    tmp_folder = mkdtemp(prefix="openmc_geometry_plotter_tmp_files_")
+    print(f'writing files to {tmp_folder}')
 
-    self.export_to_xml(tmp_folder)
+    if self.is_geometry_dagmc():
 
-    with open(Path(tmp_folder)/'geometry.xml', 'r') as file:
-        data = file.read().replace('\n', '')
-    if '<dagmc_universe filename="' in data:
-        dag = True
+        dagmc_abs_filepath = self.get_dagmc_filepath()
         import os
-        os.system(f'cp dagmc.h5m {tmp_folder}')
+        os.system(f'cp {dagmc_abs_filepath} {tmp_folder}')
+
+        dag_universe = self.get_dagmc_universe()
+
+        if str(Path(dag_universe.filename).name) != str(Path(dag_universe.filename)):
+            msg = f'Paths for dagmc files that contain folders are not currently supported. Try setting your DAGMCUniverse.filename to {Path(dag_universe.filename).name} instead of {Path(dag_universe.filename)}'
+            raise IsADirectoryError(msg)
+        # dag_universe.filename = dagmc_abs_filepath.name
 
         # dagmuniverse does not have a get_all_materials
-        mat_names = self.root_universe.cells[10000].fill.material_names
+        mat_names = dag_universe.material_names
+
+        # mat ids are not known by the dagmc file
+        # assumed mat ids start at 1 and continue,
+        # universe.n_cells is the equivilent approximation for cell ids
         mat_ids = range(1, len(mat_names)+1)
 
         # if any of the plot_ are None then this needs calculating
-        bb = self.root_universe.cells[10000].fill.bounding_box
+        # might need to be self.bounding_box
+        bb = dag_universe.bounding_box
+
     else:
-        dag = False
 
         original_materials = self.get_all_materials()
         mat_ids = original_materials.keys()
@@ -185,6 +217,8 @@ def get_slice_of_material_ids(
 
         # if any of the plot_ are None then this needs calculating
         bb = self.bounding_box
+    
+    self.export_to_xml(tmp_folder)
 
     plot_left, plot_right, plot_bottom, plot_top, slice_value = self.get_plot_extent(plot_left, plot_right, plot_bottom, plot_top, slice_value, bb, view_direction)
 
@@ -204,21 +238,6 @@ def get_slice_of_material_ids(
         all_materials.append(new_mat)
     nn = openmc.Materials(all_materials)
     nn.export_to_xml(tmp_folder)
-
-    # if a dagmc model is present we copy the h5m file to the tmp folder
-    print(self.__dict__)
-    print(self)
-    print(self)
-    print(self)
-    print(self)
-
-    # if isinstance(self.root, openmc.DAGMCUniverse):
-    #     print(self.root.filename)
-    #     print(self.root.filename)
-    #     print(self.root.filename)
-    #     print(self.root.filename)
-    #     print(self.root.filename)
-    #TODO check for DAGMCUniverse anywhere in the geometry, not just root
 
     my_settings = openmc.Settings()
     my_settings.output = {"summary": False, "tallies": False}
@@ -248,7 +267,6 @@ def get_slice_of_material_ids(
         my_plot.origin = (plot_x, slice_value, plot_y)
 
     my_plot.pixels = (pixels_across, pixels_up)
-    # my_plot.pixels = (100,100)
     colors_dict = {}
     for mat_id in mat_ids:
         colors_dict[mat_id] = (mat_id, mat_id, mat_id)
@@ -297,15 +315,16 @@ def get_slice_of_material_ids(
 def get_slice_of_cell_ids(
     self,
     view_direction: str,
-    slice_value=None,
-    plot_top=None,
-    plot_bottom=None,
-    plot_left=None,
-    plot_right=None,
-    pixels_across=500,
+    slice_value: typing.Optional[float] = None,
+    plot_top: typing.Optional[float] = None,
+    plot_bottom: typing.Optional[float] = None,
+    plot_left: typing.Optional[float] = None,
+    plot_right: typing.Optional[float] = None,
+    pixels_across: int = 500,
 ):
     """Returns a grid of cell IDs for each mesh voxel on the slice. This
-    can be passed directly to plotting functions like Matplotlib imshow.
+    can be passed directly to plotting functions like Matplotlib imshow. 0
+    values represent void space or undefined space.
 
     Args:
         slice_value:
@@ -315,7 +334,9 @@ def get_slice_of_cell_ids(
         plot_right:
         pixels_across:
     """
-
+    if self.is_geometry_dagmc():
+        msg='DAGMC models are not yet supported by get_slice_of_cell_ids, DAGMC models are supported by the get_slice_of_material_ids method.'
+        raise ValueError(msg)
     bb = self.bounding_box
 
     plot_left, plot_right, plot_bottom, plot_top, slice_value = self.get_plot_extent(plot_left, plot_right, plot_bottom, plot_top, slice_value, bb, view_direction)
@@ -338,7 +359,7 @@ def get_slice_of_cell_ids(
         n.add_nuclide("He4", 1)
         all_materials.append(n)
     nn = openmc.Materials(all_materials)
-    tmp_folder = mkdtemp(prefix="openmc_geometry_plotter_tmp_files")
+    tmp_folder = mkdtemp(prefix="openmc_geometry_plotter_tmp_files_")
     nn.export_to_xml(tmp_folder)
     self.export_to_xml(tmp_folder)
 
@@ -417,6 +438,9 @@ def get_slice_of_cell_ids(
 
 # patching openmc
 
+openmc.Geometry.get_dagmc_universe = get_dagmc_universe
+openmc.Geometry.is_geometry_dagmc = is_geometry_dagmc
+openmc.Geometry.get_dagmc_filepath = get_dagmc_filepath
 openmc.Geometry.get_plot_extent = get_plot_extent
 openmc.Geometry.get_side_extent = get_side_extent
 openmc.Geometry.get_mpl_plot_extent = get_mpl_plot_extent
@@ -425,3 +449,6 @@ openmc.Geometry.get_axis_labels = get_axis_labels
 openmc.Geometry.get_slice_of_material_ids = get_slice_of_material_ids
 openmc.Geometry.get_slice_of_cell_ids = get_slice_of_cell_ids
 openmc.Geometry.find_cell_id = find_cell_id
+
+
+openmc.DAGMCUniverse.get_all_universes = openmc.Universe.get_all_universes
