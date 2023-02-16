@@ -86,13 +86,27 @@ def main():
     # DAGMC route
     elif dagmc_file != None and geometry_xml_file != None:
         st.markdown("DAGMC geometry not yet supported, work in progress")
+        save_uploadedfile(dagmc_file)
+        save_uploadedfile(geometry_xml_file)
 
-        # make a basic openmc geometry
+        bound_dag_univ = openmc.DAGMCUniverse(filename=dagmc_file.name).bounded_universe()
+        my_geometry = openmc.Geometry(root=bound_dag_univ)
+        
+        mat_ids = range(0, len(my_geometry.material_names)+1)
 
     elif dagmc_file != None and geometry_xml_file == None:
         st.markdown("DAGMC geometry not yet supported, work in progress")
+        save_uploadedfile(dagmc_file)
+
+        # make a basic openmc geometry
+        bound_dag_univ = openmc.DAGMCUniverse(filename=dagmc_file.name).bounded_universe()
+        my_geometry = openmc.Geometry(root=bound_dag_univ)
+
+        dag_universe = my_geometry.get_dagmc_universe()
 
         # find all material names
+        mat_ids = range(0, len(dag_universe.material_names)+1)
+        
 
         # make a pretend material for each one
 

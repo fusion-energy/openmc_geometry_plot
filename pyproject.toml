@@ -19,7 +19,9 @@ classifiers = [
 ]
 dependencies = [
     "numpy>=1.21.1",
-    "streamlit"
+    "streamlit",
+    "plotly",
+    "matplotlib"
 ]
 dynamic = ["version"]
 
