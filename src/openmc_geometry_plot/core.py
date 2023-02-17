@@ -164,6 +164,7 @@ def get_slice_of_material_ids(
     plot_left: typing.Optional[float] = None,
     plot_right: typing.Optional[float] = None,
     pixels_across: int = 500,
+    verbose: bool = False
 ):
     """Returns a grid of material IDs for each mesh voxel on the slice. This
     can be passed directly to plotting functions like Matplotlib imshow. 0
@@ -176,6 +177,7 @@ def get_slice_of_material_ids(
         plot_left:
         plot_right:
         pixels_across:
+        verbose:
     """
 
     tmp_folder = mkdtemp(prefix="openmc_geometry_plotter_tmp_files_")
@@ -190,7 +192,12 @@ def get_slice_of_material_ids(
         dag_universe = self.get_dagmc_universe()
 
         if str(Path(dag_universe.filename).name) != str(Path(dag_universe.filename)):
-            msg = f"Paths for dagmc files that contain folders are not currently supported. Try setting your DAGMCUniverse.filename to {Path(dag_universe.filename).name} instead of {Path(dag_universe.filename)}"
+            msg = (
+                "Paths for dagmc files that contain folders are not currently "
+                "supported. Try setting your DAGMCUniverse.filename "
+                f"to {Path(dag_universe.filename).name} instead of "
+                f"{Path(dag_universe.filename)}"
+            )
             raise IsADirectoryError(msg)
         # dag_universe.filename = dagmc_abs_filepath.name
 
@@ -282,7 +289,7 @@ def get_slice_of_material_ids(
     package_dir = Path(__file__).parent
     openmc.config["cross_sections"] = package_dir / "cross_sections.xml"
 
-    openmc.plot_geometry(cwd=tmp_folder)  # , output=False)
+    openmc.plot_geometry(cwd=tmp_folder, output=verbose)
 
     print(f"Temporary image and xml files written to {tmp_folder}")
 
@@ -322,6 +329,7 @@ def get_slice_of_cell_ids(
     plot_left: typing.Optional[float] = None,
     plot_right: typing.Optional[float] = None,
     pixels_across: int = 500,
+    verbose: bool = False
 ):
     """Returns a grid of cell IDs for each mesh voxel on the slice. This
     can be passed directly to plotting functions like Matplotlib imshow. 0
@@ -334,6 +342,7 @@ def get_slice_of_cell_ids(
         plot_left:
         plot_right:
         pixels_across:
+        verbose:
     """
     if self.is_geometry_dagmc():
         msg = "DAGMC models are not yet supported by get_slice_of_cell_ids, DAGMC models are supported by the get_slice_of_material_ids method."
@@ -409,7 +418,7 @@ def get_slice_of_cell_ids(
     package_dir = Path(__file__).parent
     openmc.config["cross_sections"] = package_dir / "cross_sections.xml"
 
-    openmc.plot_geometry(cwd=tmp_folder)  # , output=False)
+    openmc.plot_geometry(cwd=tmp_folder, output=verbose)
 
     print(f"Temporary image and xml files written to {tmp_folder}")
 
