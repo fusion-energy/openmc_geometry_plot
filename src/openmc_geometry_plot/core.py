@@ -1,3 +1,4 @@
+import os
 import openmc
 import numpy as np
 import typing
@@ -185,7 +186,6 @@ def get_slice_of_material_ids(
 
     if self.is_geometry_dagmc():
         dagmc_abs_filepath = self.get_dagmc_filepath()
-        import os
 
         os.system(f"cp {dagmc_abs_filepath} {tmp_folder}")
 
@@ -277,6 +277,11 @@ def get_slice_of_material_ids(
     my_plot.pixels = (pixels_across, pixels_up)
     colors_dict = {}
     for mat_id in mat_ids:
+        # TODO the RGB must be set from soething other than the mat id as
+        # mat_id goes over 256.
+        # perhaps the 2nd number could be the number of multiples of 256
+        # the third number could be the number of mutiples of the second
+        # this supports cell ids or mat ids up to 256 * 256 * 256
         colors_dict[mat_id] = (mat_id, mat_id, mat_id)
     my_plot.colors = colors_dict
     my_plot.background = (0, 0, 0)  # void material is 0
@@ -344,10 +349,52 @@ def get_slice_of_cell_ids(
         pixels_across:
         verbose:
     """
+
+    tmp_folder = mkdtemp(prefix="openmc_geometry_plotter_tmp_files_")
+    print(f"writing files to {tmp_folder}")
+
     if self.is_geometry_dagmc():
-        msg = "DAGMC models are not yet supported by get_slice_of_cell_ids, DAGMC models are supported by the get_slice_of_material_ids method."
-        raise ValueError(msg)
-    bb = self.bounding_box
+        dagmc_abs_filepath = self.get_dagmc_filepath()
+
+        os.system(f"cp {dagmc_abs_filepath} {tmp_folder}")
+
+        dag_universe = self.get_dagmc_universe()
+
+        if str(Path(dag_universe.filename).name) != str(Path(dag_universe.filename)):
+            msg = (
+                "Paths for dagmc files that contain folders are not currently "
+                "supported. Try setting your DAGMCUniverse.filename "
+                f"to {Path(dag_universe.filename).name} instead of "
+                f"{Path(dag_universe.filename)}"
+            )
+            raise IsADirectoryError(msg)
+        # dag_universe.filename = dagmc_abs_filepath.name
+
+        # dagmuniverse does not have a get_all_materials
+        mat_names = dag_universe.material_names
+
+        # mat ids are not known by the dagmc file
+        # assumed mat ids start at 1 and continue,
+        # universe.n_cells is the equivilent approximation for cell ids
+        mat_ids = range(1, len(mat_names) + 1)
+
+        # if any of the plot_ are None then this needs calculating
+        # might need to be self.bounding_box
+        bb = dag_universe.bounding_box
+        print('dagmc found')
+        print('dagmc found')
+        print('dagmc found')
+        print('dagmc found')
+    else:
+        
+        original_materials = self.get_all_materials()
+        mat_ids = original_materials.keys()
+
+        # mat_names = []
+        # for key, value in original_materials.items():
+        #     mat_names.append(value.name)
+            
+        bb = self.bounding_box
 
     plot_left, plot_right, plot_bottom, plot_top, slice_value = self.get_plot_extent(
         plot_left, plot_right, plot_bottom, plot_top, slice_value, bb, view_direction
@@ -359,9 +406,7 @@ def get_slice_of_cell_ids(
     aspect_ratio = plot_height / plot_width
     pixels_up = int(pixels_across * aspect_ratio)
 
-    original_materials = self.get_all_materials()
     cell_ids = self.get_all_cells().keys()
-    mat_ids = original_materials.keys()
 
     all_materials = []
     for i in mat_ids:

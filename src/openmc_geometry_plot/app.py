@@ -58,17 +58,18 @@ def header():
 def main():
     header()
 
-    file_col1, file_col2 = st.columns([1, 1])
-    file_col1.write(
+    file_label_col1, file_label_col2 = st.columns([1, 1])
+    file_label_col1.write(
         """
             👉 Create your ```openmc.Geometry()``` and export the geometry xml file using ```export_to_xml()```.
         """
     )
-    file_col2.write(
+    file_label_col2.write(
         """
             👉 Create your DAGMC h5m file using tools like [CAD-to-h5m](https://github.com/fusion-energy/cad_to_dagmc), [STL-to_h5m](https://github.com/fusion-energy/stl_to_h5m) [vertices-to-h5m](https://github.com/fusion-energy/vertices_to_h5m), [Brep-to-h5m](https://github.com/fusion-energy/brep_to_h5m) or the [Cubit](https://coreform.com/products/coreform-cubit/) [Plugin](https://github.com/svalinn/Cubit-plugin)
         """
     )
+    file_col1, file_col2 = st.columns([1, 1])
     geometry_xml_file = file_col1.file_uploader(
         "Upload your geometry.xml", type=["xml"]
     )
@@ -144,7 +145,9 @@ def main():
         )
 
     if my_geometry:
+        print('geometry is something so plotting')
         bb = my_geometry.bounding_box
+        print('bb', bb)
 
         col1, col2 = st.columns([1, 3])
 
@@ -193,6 +196,8 @@ def main():
             else:
                 x_min = float(bb[0][0])
                 x_max = float(bb[1][0])
+            print('x_min', x_min)
+            print('x_max', x_max)
 
             # y axis is y values
             if np.isinf(bb[0][1]) or np.isinf(bb[1][1]):
@@ -205,6 +210,8 @@ def main():
             else:
                 y_min = float(bb[0][1])
                 y_max = float(bb[1][1])
+            print('y_min', y_min)
+            print('y_max', y_max)
 
         if view_direction in ["y"]:
             # x axis is x values
@@ -252,7 +259,8 @@ def main():
                 y_min = float(bb[0][1])
                 y_max = float(bb[1][1])
 
-        if x_min and x_max:
+        if isinstance(x_min, float) and isinstance(x_max, float):
+            print('slider')
             plot_left, plot_right = col1.slider(
                 label="Left and right values for the horizontal axis",
                 min_value=x_min,
@@ -262,7 +270,7 @@ def main():
                 help="Set the lowest visible value and highest visible value on the horizontal axis",
             )
 
-        if y_min and y_max:
+        if isinstance(y_min, float) and isinstance(y_max, float):
             plot_bottom, plot_top = col1.slider(
                 label="Bottom and top values for the vertical axis",
                 min_value=y_min,
@@ -283,9 +291,10 @@ def main():
             help="Optionally set your own title for the plot",
             value=f"Slice through OpenMC geometry with view direction {view_direction}",
         )
-
-        if plot_left and plot_right and plot_top and plot_bottom:
+        print(plot_left, plot_right, plot_top, plot_bottom)
+        if isinstance(plot_left, float) and isinstance(plot_right, float) and isinstance(plot_top, float) and isinstance(plot_bottom, float):
             if color_by == "cells":
+                print('getting cell id slice')
                 data_slice = my_geometry.get_slice_of_cell_ids(
                     view_direction=view_direction,
                     plot_left=plot_left,
