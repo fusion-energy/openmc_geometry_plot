@@ -10,6 +10,17 @@ from PIL import Image
 
 from numpy import asarray
 
+def get_rgb_from_int(value: int) -> typing.Tuple[int,int,int]:
+    blue =  value & 255
+    green = (value >> 8) & 255
+    red =   (value >> 16) & 255
+    return red, green, blue
+
+def get_int_from_rgb(rgb: typing.Tuple[int,int,int]) -> int:
+    red = rgb[0]
+    green = rgb[1]
+    blue = rgb[2]
+    return (red<<16) + (green<<8) + blue
 
 def get_plot_extent(
     self, plot_left, plot_right, plot_bottom, plot_top, slice_value, bb, view_direction
@@ -277,12 +288,7 @@ def get_slice_of_material_ids(
     my_plot.pixels = (pixels_across, pixels_up)
     colors_dict = {}
     for mat_id in mat_ids:
-        # TODO the RGB must be set from soething other than the mat id as
-        # mat_id goes over 256.
-        # perhaps the 2nd number could be the number of multiples of 256
-        # the third number could be the number of mutiples of the second
-        # this supports cell ids or mat ids up to 256 * 256 * 256
-        colors_dict[mat_id] = (mat_id, mat_id, mat_id)
+        colors_dict[mat_id] = get_rgb_from_int(mat_id)
     my_plot.colors = colors_dict
     my_plot.background = (0, 0, 0)  # void material is 0
     my_plot.color_by = "material"
@@ -311,15 +317,18 @@ def get_slice_of_material_ids(
 
     # the image_values have three entries for RGB but we just need one.
     # this reduces the nested list to contain a single value per pixel
+    # image_value = [
+    #     [inner_entry[0] for inner_entry in outer_entry] for outer_entry in image_values
+    # ]
     image_value = [
-        [inner_entry[0] for inner_entry in outer_entry] for outer_entry in image_values
+        [get_int_from_rgb(inner_entry) for inner_entry in outer_entry] for outer_entry in image_values
     ]
 
-    # replaces and 255 values with 0.
+    # replaces rgb (255,255,255) which is 16777215 values with 0.
     # 0 is the color for void space
-    # 255 gets returned by undefined regions outside the geometry
+    # (255,255,255) gets returned by undefined regions outside the geometry
     trimmed_image_value = [
-        [0 if x == 255 else x for x in inner_list] for inner_list in image_value
+        [0 if x == 16777215 else x for x in inner_list] for inner_list in image_value
     ]
 
     return trimmed_image_value
@@ -451,6 +460,7 @@ def get_slice_of_cell_ids(
     # my_plot.pixels = (100,100)
     colors_dict = {}
     for cell_id in cell_ids:
+        # TODO make use of rgb to int convertor
         colors_dict[cell_id] = (cell_id, cell_id, cell_id)
     my_plot.colors = colors_dict
     my_plot.background = (0, 0, 0)  # void material is 0
