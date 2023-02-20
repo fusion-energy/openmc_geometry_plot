@@ -21,25 +21,23 @@ mats = openmc.Materials([mat1, mat2])
 # GEOMETRY
 
 # surfaces
-vessel_inner = openmc.Sphere(r=100)
-first_wall_outer_surface = openmc.Sphere(r=200)
-breeder_blanket_outer_surface = openmc.Sphere(r=300, boundary_type="vacuum")
+surf1 = openmc.Sphere(r=100)
+surf2 = openmc.Sphere(r=200)
+surf3 = openmc.Sphere(r=300, boundary_type="vacuum")
+
+# regions
+region1 = -surf1
+region2 = -surf2 & +surf1
+region3 = +surf2 & -surf3
 
 # cells
-inner_vessel_region = -vessel_inner
-inner_vessel_cell = openmc.Cell(region=inner_vessel_region)
+cell1 = openmc.Cell(region=region1)
+cell2 = openmc.Cell(region=region2)
+cell2.fill = mat2
+cell3 = openmc.Cell(region=region3)
+cell3.fill = mat1
 
-first_wall_region = -first_wall_outer_surface & +vessel_inner
-first_wall_cell = openmc.Cell(region=first_wall_region)
-first_wall_cell.fill = mat2
-
-breeder_blanket_region = +first_wall_outer_surface & -breeder_blanket_outer_surface
-breeder_blanket_cell = openmc.Cell(region=breeder_blanket_region)
-breeder_blanket_cell.fill = mat1
-
-my_geometry = openmc.Geometry(
-    [inner_vessel_cell, first_wall_cell, breeder_blanket_cell]
-)
+my_geometry = openmc.Geometry(    [cell1, cell2, cell3])
 
 
 # this part plots the geometry with colors
@@ -59,6 +57,8 @@ bounds = [0, 1, 2, 3]
 norm = colors.BoundaryNorm(bounds, cmap.N)
 
 plot_extent = my_geometry.get_mpl_plot_extent(view_direction="z")
+
+# shows slice of material ids colored with colour map 
 plt.imshow(
     data_slice,
     extent=plot_extent,
@@ -67,7 +67,7 @@ plt.imshow(
     cmap=cmap,  # needed for colors
 )
 
-
+# shows outlines of materials
 plt.contour(
     data_slice,
     origin="upper",

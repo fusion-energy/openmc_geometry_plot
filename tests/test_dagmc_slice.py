@@ -33,6 +33,7 @@ def test_get_dagmc_universe():
     assert isinstance(my_geometry.get_dagmc_universe(), openmc.DAGMCUniverse)
 
 
+# TODO add check that the numbers returned are correct
 def test_slice_material_dagmc_file():
     bound_dag_univ = openmc.DAGMCUniverse(
         filename="two_disconnected_cubes.h5m"
@@ -45,16 +46,22 @@ def test_slice_material_dagmc_file():
 
     assert np.array(data_slice).shape == (10, 10)
 
-
+# TODO add check that the numbers returned are correct
 def test_slice_cell_dagmc_file():
     bound_dag_univ = openmc.DAGMCUniverse(
         filename="two_disconnected_cubes.h5m"
     ).bounded_universe()
     my_geometry = openmc.Geometry(root=bound_dag_univ)
 
-    with pytest.raises(ValueError):
-        data_slice = my_geometry.get_slice_of_cell_ids(
-            view_direction="x", slice_value=1, pixels_across=10
-        )
+    data_slice = my_geometry.get_slice_of_cell_ids(
+        view_direction="x", slice_value=1, pixels_across=10
+    )
 
     assert np.array(data_slice).shape == (10, 10)
+
+
+# future test to check that use of dagmc directories raise an error. as they are not supported
+    # with pytest.raises(ValueError):
+    #     data_slice = my_geometry.get_slice_of_cell_ids(
+    #         view_direction="x", slice_value=1, pixels_across=10
+    #     )

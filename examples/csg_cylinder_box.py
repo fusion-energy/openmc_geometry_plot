@@ -1,11 +1,9 @@
-# plots a geometry with both backends (matplotlib and plotly)
-# A couple of zoomed in plots are plotted
-# All view angles (x, y, z) for the whole geometry are plotted
-
-
+import matplotlib.pylab as plt
+import numpy as np
 import openmc
+import openmc_geometry_plot  # adds plot_axis_slice to openmc.Geometry
 
-# dimentions are in cm
+
 height = 150
 outer_radius = 50
 thickness = 10
@@ -46,12 +44,6 @@ my_geometry = openmc.Geometry(
 
 # example code for plotting materials of the geometry with an outline
 
-import numpy as np
-import matplotlib.pylab as plt
-import openmc_geometry_plot  # adds plot_axis_slice to openmc.Geometry
-
-
-data_slice = my_geometry.get_slice_of_cell_ids(view_direction="x")
 
 xlabel, ylabel = my_geometry.get_axis_labels(view_direction="x")
 plt.xlabel(xlabel)
@@ -59,6 +51,9 @@ plt.ylabel(ylabel)
 
 plot_extent = my_geometry.get_mpl_plot_extent(view_direction="x")
 
+
+data_slice = my_geometry.get_slice_of_cell_ids(view_direction="x")
+# plots the cells with randomly assigned colors
 plt.imshow(
     data_slice,
     extent=plot_extent,
@@ -68,6 +63,7 @@ plt.imshow(
 # gets unique levels for outlines contour plot
 levels = np.unique([item for sublist in data_slice for item in sublist])
 
+# plots the outline of the cells
 plt.contour(
     data_slice,
     origin="upper",

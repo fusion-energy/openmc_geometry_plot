@@ -86,17 +86,19 @@ def main():
 
     # DAGMC route
     elif dagmc_file != None and geometry_xml_file != None:
-        st.markdown("DAGMC geometry not yet supported, work in progress")
+
         save_uploadedfile(dagmc_file)
         save_uploadedfile(geometry_xml_file)
 
         bound_dag_univ = openmc.DAGMCUniverse(filename=dagmc_file.name).bounded_universe()
         my_geometry = openmc.Geometry(root=bound_dag_univ)
-        
-        mat_ids = range(0, len(my_geometry.material_names)+1)
+
+        dag_universe = my_geometry.get_dagmc_universe()
+
+        mat_ids = range(0, len(dag_universe.material_names)+1)
 
     elif dagmc_file != None and geometry_xml_file == None:
-        st.markdown("DAGMC geometry not yet supported, work in progress")
+
         save_uploadedfile(dagmc_file)
 
         # make a basic openmc geometry
@@ -213,6 +215,20 @@ def main():
             print('y_min', y_min)
             print('y_max', y_max)
 
+            # slice axis is z
+            if np.isinf(bb[0][2]) or np.isinf(bb[1][2]):
+                slice_min = col1.number_input(
+                    label="minimum slice value", key="slice_min"
+                )
+                slice_max = col1.number_input(
+                    label="maximum slice value", key="slice_max"
+                )
+            else:
+                slice_min = float(bb[0][2])
+                slice_max = float(bb[1][2])
+            print('slice_min', slice_min)
+            print('slice_max', slice_max)
+
         if view_direction in ["y"]:
             # x axis is x values
             if np.isinf(bb[0][0]) or np.isinf(bb[1][0]):
@@ -238,6 +254,20 @@ def main():
                 y_min = float(bb[0][2])
                 y_max = float(bb[1][2])
 
+            # slice axis is z
+            if np.isinf(bb[0][1]) or np.isinf(bb[1][1]):
+                slice_min = col1.number_input(
+                    label="minimum slice value", key="slice_min"
+                )
+                slice_max = col1.number_input(
+                    label="maximum slice value", key="slice_max"
+                )
+            else:
+                slice_min = float(bb[0][1])
+                slice_max = float(bb[1][1])
+            print('slice_min', slice_min)
+            print('slice_max', slice_max)
+
         if view_direction in ["x"]:
             # x axis is y values
             if np.isinf(bb[0][1]) or np.isinf(bb[1][1]):
@@ -256,11 +286,24 @@ def main():
                     label="maximum vertical axis value", key="y_max"
                 )
             else:
-                y_min = float(bb[0][1])
-                y_max = float(bb[1][1])
+                y_min = float(bb[0][2])
+                y_max = float(bb[1][2])
+
+            # slice axis is z
+            if np.isinf(bb[0][0]) or np.isinf(bb[1][0]):
+                slice_min = col1.number_input(
+                    label="minimum slice value", key="slice_min"
+                )
+                slice_max = col1.number_input(
+                    label="maximum slice value", key="slice_max"
+                )
+            else:
+                slice_min = float(bb[0][0])
+                slice_max = float(bb[1][0])
+            print('slice_min', slice_min)
+            print('slice_max', slice_max)
 
         if isinstance(x_min, float) and isinstance(x_max, float):
-            print('slider')
             plot_left, plot_right = col1.slider(
                 label="Left and right values for the horizontal axis",
                 min_value=x_min,
@@ -278,6 +321,15 @@ def main():
                 value=(y_min, y_max),
                 key="bottom_top_slider",
                 help="Set the lowest visible value and highest visible value on the vertical axis",
+            )
+        if isinstance(slice_min, float) and isinstance(slice_max, float):
+            slice_value = col1.slider(
+                label="Slice value",
+                min_value=slice_min,
+                max_value=slice_max,
+                value=(slice_min + slice_max)/2,
+                key="slice_slider",
+                help="Set the value of the slice axis",
             )
 
         pixels_across = col1.number_input(
@@ -302,6 +354,7 @@ def main():
                     plot_top=plot_top,
                     plot_bottom=plot_bottom,
                     pixels_across=pixels_across,
+                    slice_value=slice_value
                 )
             elif color_by == "materials":
                 data_slice = my_geometry.get_slice_of_material_ids(
@@ -311,17 +364,21 @@ def main():
                     plot_top=plot_top,
                     plot_bottom=plot_bottom,
                     pixels_across=pixels_across,
+                    slice_value=slice_value
                 )
 
             (xlabel, ylabel) = my_geometry.get_axis_labels(
                 view_direction=view_direction
             )
             if backend == "matplotlib":
+
+                extent = my_geometry.get_plot_extent(
+                    plot_left, plot_right, plot_bottom, plot_top, slice_value, bb, view_direction
+                )
+                extent = extent[:-1]
                 plt.imshow(
                     data_slice,
-                    extent=my_geometry.get_mpl_plot_extent(
-                        view_direction=view_direction
-                    ),
+                    extent=extent,
                     interpolation="none",
                 )
 
@@ -341,9 +398,7 @@ def main():
                         linestyles="solid",
                         levels=levels,
                         linewidths=0.5,
-                        extent=my_geometry.get_mpl_plot_extent(
-                            view_direction=view_direction
-                        ),
+                        extent=extent,
                     )
 
                 plt.savefig("openmc_plot_geometry_image.png")
