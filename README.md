@@ -13,13 +13,16 @@ This package is deployed on [xsplot.com](https://www.xsplot.com) as part of the 
 
 You will need to first install openmc. There are several methods but perhaps the quickest is to use Conda.
 
-```
+```bash
 conda install -c conda-forge openmc
 ```
 
-```
+Then you can install ```openmc_geometry_plot``` with pip
+
+```bash
 pip install openmc_geometry_plot
 ```
+
 
 # Usage
 
@@ -31,4 +34,4 @@ See the [examples folder](https://github.com/fusion-energy/openmc_geometry_plot/
 
 ## Graphical User Interface (GUI) usage
 
-After installing run ```openmc_geometry_plot``` command from the terminal and the GUI should launch in a new browser window.
+After installing run the ```openmc_geometry_plot``` command from the terminal and the GUI should launch in a new browser window.

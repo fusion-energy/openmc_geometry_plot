@@ -2,8 +2,8 @@ import openmc
 import openmc_geometry_plot
 import numpy as np
 
+
 def test_get_slice_of_material_ids():
-    
     openmc_material = openmc.Material()
     openmc_material.id = 1
 
@@ -16,10 +16,10 @@ def test_get_slice_of_material_ids():
     regions = openmc.model.subdivide(spheres)
 
     cells = [openmc.Cell(fill=openmc_material, region=r) for r in regions[:-1]]
-    
+
     my_geometry = openmc.Geometry(cells)
-    
-    slice_data = my_geometry.get_slice_of_material_ids(view_direction='x')
+
+    slice_data = my_geometry.get_slice_of_material_ids(view_direction="x")
 
     assert np.array(slice_data).shape == (500, 500)
     for rows in slice_data:

@@ -1,4 +1,8 @@
+
+import matplotlib.pylab as plt
+import numpy as np
 import openmc
+import openmc_geometry_plot  # adds data slicing functions to openmc.Geometry
 
 
 material_1 = openmc.Material()
@@ -28,26 +32,25 @@ my_geometry = openmc.Geometry(universe)
 
 # example code for plotting materials of the geometry with an outline
 
-import numpy as np
-import openmc_geometry_plot  # adds data slicing functions to openmc.Geometry
-import matplotlib.pylab as plt
-
+# defines the plot extent
 plot_left = -100
 plot_right = 100
 plot_bottom = 200
 plot_top = -200
+
 data_slice = my_geometry.get_slice_of_material_ids(
-    view_direction='x',
+    view_direction="x",
     plot_left=plot_left,
     plot_right=plot_right,
     plot_bottom=plot_bottom,
     plot_top=plot_top,
 )
 
-xlabel, ylabel = my_geometry.get_axis_labels(view_direction='x')
+xlabel, ylabel = my_geometry.get_axis_labels(view_direction="x")
 plt.xlabel(xlabel)
 plt.ylabel(ylabel)
 
+# plots of cells with randomly assigned colors
 plt.imshow(
     data_slice,
     extent=(plot_left, plot_right, plot_bottom, plot_top),
@@ -57,6 +60,7 @@ plt.imshow(
 # gets unique levels for outlines contour plot
 levels = np.unique([item for sublist in data_slice for item in sublist])
 
+# plots the outline of the cells
 plt.contour(
     data_slice,
     origin="upper",

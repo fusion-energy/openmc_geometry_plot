@@ -139,3 +139,5 @@ _version.py
 *.h5
 *.out
 *.xml
+*.ppm
+*.vtk

@@ -19,8 +19,9 @@ classifiers = [
 ]
 dependencies = [
     "numpy>=1.21.1",
-    "matplotlib",
+    "streamlit",
     "plotly",
+    "matplotlib"
 ]
 dynamic = ["version"]
 
@@ -43,3 +44,6 @@ package-dir = {"" = "src"}
 
 [project.scripts]
 openmc_geometry_plot = "openmc_geometry_plot.launch:main"
+
+[options.package_data]
+openmc_geometry_plot = ["*.xml", "*.h5"]

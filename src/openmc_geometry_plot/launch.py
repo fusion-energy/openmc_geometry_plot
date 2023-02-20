@@ -5,7 +5,6 @@ from pathlib import Path
 
 
 def main():
-
     path_to_app = str(Path(openmc_geometry_plot.__path__[0]) / "app.py")
 
     sys.argv = ["streamlit", "run", path_to_app]

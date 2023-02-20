@@ -1,0 +1,50 @@
+# This CI will lauch a Docker image that contains all the dependencies required
+# within that image the pytest test suite is run
+
+name: CI with install
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+    paths:
+      - "**.py"
+      - "**.ipynb"
+      - "**.yml"
+      - "**.cfg"
+      - "**.toml"
+      - "**.sh"
+
+jobs:
+  testing:
+    runs-on: ubuntu-latest
+    container:
+      image: continuumio/miniconda3:4.12.0
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: install package
+        run: |
+          conda install -c conda-forge openmc
+
+      - name: install package with tests
+        run: |
+          pip install .[tests]
+
+      - name: Run tests
+        run: |
+          cd tests
+          pytest -v
+
+      - name: Run examples
+        run: |
+          cd examples
+          python csg_cylinder_box.py
+          python csg_inf_cylinder.py
+          python csg_spheres_colored_by_material_and_cell.py
+          python csg_spheres_colored_by_material.py
+          python csg_spheres_colored_by_material_with_legend.py
+          python csg_tokamak.py
+          python dagmc_180_degree_tokamak.py
