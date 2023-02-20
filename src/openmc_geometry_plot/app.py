@@ -288,8 +288,37 @@ def main():
             (xlabel, ylabel) = my_geometry.get_axis_labels(
                 view_direction=view_direction
             )
-            if backend == "matplotlib":
+            if outline is not None:
+                # gets unique levels for outlines contour plot
+                if outline == color_by:
+                    outline_data_slice = color_data_slice
+                elif outline == "cells":
+                    outline_data_slice = my_geometry.get_slice_of_cell_ids(
+                        view_direction=view_direction,
+                        plot_left=plot_left,
+                        plot_right=plot_right,
+                        plot_top=plot_top,
+                        plot_bottom=plot_bottom,
+                        pixels_across=pixels_across,
+                        slice_value=slice_value,
+                    )
+                elif outline == "materials":
+                    outline_data_slice = my_geometry.get_slice_of_material_ids(
+                        view_direction=view_direction,
+                        plot_left=plot_left,
+                        plot_right=plot_right,
+                        plot_top=plot_top,
+                        plot_bottom=plot_bottom,
+                        pixels_across=pixels_across,
+                        slice_value=slice_value,
+                    )
+                else:
+                    raise ValueError(
+                        f"outline can only be cells or materials, not {outline}"
+                    )
 
+            if backend == "matplotlib":
+    
                 extent = my_geometry.get_plot_extent(
                     plot_left,
                     plot_right,
@@ -311,34 +340,6 @@ def main():
                 plt.title(title)
 
                 if outline is not None:
-                    # gets unique levels for outlines contour plot
-                    if outline == color_by:
-                        outline_data_slice = color_data_slice
-                    elif outline == "cells":
-                        outline_data_slice = my_geometry.get_slice_of_cell_ids(
-                            view_direction=view_direction,
-                            plot_left=plot_left,
-                            plot_right=plot_right,
-                            plot_top=plot_top,
-                            plot_bottom=plot_bottom,
-                            pixels_across=pixels_across,
-                            slice_value=slice_value,
-                        )
-                    elif outline == "materials":
-                        outline_data_slice = my_geometry.get_slice_of_material_ids(
-                            view_direction=view_direction,
-                            plot_left=plot_left,
-                            plot_right=plot_right,
-                            plot_top=plot_top,
-                            plot_bottom=plot_bottom,
-                            pixels_across=pixels_across,
-                            slice_value=slice_value,
-                        )
-                    else:
-                        raise ValueError(
-                            f"outline can only be cells or materials, not {outline}"
-                        )
-
                     levels = np.unique(
                         [item for sublist in outline_data_slice for item in sublist]
                     )
@@ -364,16 +365,16 @@ def main():
                         mime="image/png",
                     )
             else:
-                plot = go.Figure(
-                    data=[
+                
+                data = [
                         go.Heatmap(
-                            z=data_slice,
+                            z=color_data_slice,
                             showscale=False,
                             colorscale="viridis",
                             x0=plot_left,
-                            dx=abs(plot_left - plot_right) / (len(data_slice[0]) - 1),
+                            dx=abs(plot_left - plot_right) / (len(color_data_slice[0]) - 1),
                             y0=plot_bottom,
-                            dy=abs(plot_bottom - plot_top) / (len(data_slice) - 1),
+                            dy=abs(plot_bottom - plot_top) / (len(color_data_slice) - 1),
                             # colorbar=dict(title=dict(side="right", text=cbar_label)),
                             # text = material_ids,
                             # hovertemplate=
@@ -384,21 +385,26 @@ def main():
                             # + ": %{x} cm<br>"
                             # + ylabel[:2].title()
                             # + ": %{y} cm<br>",
-                        ),
-                        # outline
+                        )
+                ]
+                
+                if outline is not None:
+                    
+                    data.append(
                         go.Contour(
-                            z=data_slice,
+                            z=outline_data_slice,
                             x0=plot_left,
-                            dx=abs(plot_left - plot_right) / (len(data_slice[0]) - 1),
+                            dx=abs(plot_left - plot_right) / (len(outline_data_slice[0]) - 1),
                             y0=plot_bottom,
-                            dy=abs(plot_bottom - plot_top) / (len(data_slice) - 1),
+                            dy=abs(plot_bottom - plot_top) / (len(outline_data_slice) - 1),
                             contours_coloring="lines",
                             line_width=1,
                             colorscale=[[0, "rgb(0, 0, 0)"], [1.0, "rgb(0, 0, 0)"]],
                             showscale=False,
-                        ),
-                    ]
-                )
+                        )
+                    )
+                    
+                plot = go.Figure(data=data)
 
                 plot.update_layout(
                     xaxis={"title": xlabel},
