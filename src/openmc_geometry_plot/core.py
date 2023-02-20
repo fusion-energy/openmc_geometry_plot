@@ -240,10 +240,12 @@ def get_slice_of_material_ids(
         bb = self.bounding_box
 
     self.export_to_xml(tmp_folder)
+    print(f'slice_value {slice_value}')
 
     plot_left, plot_right, plot_bottom, plot_top, slice_value = self.get_plot_extent(
         plot_left, plot_right, plot_bottom, plot_top, slice_value, bb, view_direction
     )
+    print(f'slice_value {slice_value}')
 
     plot_width = abs(plot_left - plot_right)
     plot_height = abs(plot_bottom - plot_top)
@@ -282,7 +284,7 @@ def get_slice_of_material_ids(
         my_plot.basis = "xy"
         my_plot.origin = (plot_x, plot_y, slice_value)
     if view_direction == "x":
-        my_plot.basis = "xz"
+        my_plot.basis = "yz"
         my_plot.origin = (slice_value, plot_x, plot_y)
     if view_direction == "y":
         my_plot.basis = "xz"
@@ -452,7 +454,7 @@ def get_slice_of_cell_ids(
         my_plot.basis = "xy"
         my_plot.origin = (plot_x, plot_y, slice_value)
     if view_direction == "x":
-        my_plot.basis = "xz"
+        my_plot.basis = "yz"
         my_plot.origin = (slice_value, plot_x, plot_y)
     if view_direction == "y":
         my_plot.basis = "xz"
