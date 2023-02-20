@@ -46,6 +46,7 @@ def test_slice_material_dagmc_file():
 
     assert np.array(data_slice).shape == (10, 10)
 
+
 # TODO add check that the numbers returned are correct
 def test_slice_cell_dagmc_file():
     bound_dag_univ = openmc.DAGMCUniverse(
@@ -61,7 +62,7 @@ def test_slice_cell_dagmc_file():
 
 
 # future test to check that use of dagmc directories raise an error. as they are not supported
-    # with pytest.raises(ValueError):
-    #     data_slice = my_geometry.get_slice_of_cell_ids(
-    #         view_direction="x", slice_value=1, pixels_across=10
-    #     )
+# with pytest.raises(ValueError):
+#     data_slice = my_geometry.get_slice_of_cell_ids(
+#         view_direction="x", slice_value=1, pixels_across=10
+#     )

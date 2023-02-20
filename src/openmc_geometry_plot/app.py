@@ -90,26 +90,29 @@ def main():
         save_uploadedfile(dagmc_file)
         save_uploadedfile(geometry_xml_file)
 
-        bound_dag_univ = openmc.DAGMCUniverse(filename=dagmc_file.name).bounded_universe()
+        bound_dag_univ = openmc.DAGMCUniverse(
+            filename=dagmc_file.name
+        ).bounded_universe()
         my_geometry = openmc.Geometry(root=bound_dag_univ)
 
         dag_universe = my_geometry.get_dagmc_universe()
 
-        mat_ids = range(0, len(dag_universe.material_names)+1)
+        mat_ids = range(0, len(dag_universe.material_names) + 1)
 
     elif dagmc_file != None and geometry_xml_file == None:
 
         save_uploadedfile(dagmc_file)
 
         # make a basic openmc geometry
-        bound_dag_univ = openmc.DAGMCUniverse(filename=dagmc_file.name).bounded_universe()
+        bound_dag_univ = openmc.DAGMCUniverse(
+            filename=dagmc_file.name
+        ).bounded_universe()
         my_geometry = openmc.Geometry(root=bound_dag_univ)
 
         dag_universe = my_geometry.get_dagmc_universe()
 
         # find all material names
-        mat_ids = range(0, len(dag_universe.material_names)+1)
-        
+        mat_ids = range(0, len(dag_universe.material_names) + 1)
 
         # make a pretend material for each one
 
@@ -147,9 +150,9 @@ def main():
         )
 
     if my_geometry:
-        print('geometry is set to something so attempting to plot')
+        print("geometry is set to something so attempting to plot")
         bb = my_geometry.bounding_box
-        print('bb', bb)
+        print("bb", bb)
 
         col1, col2 = st.columns([1, 3])
 
@@ -191,36 +194,24 @@ def main():
         slice_index = {"z": 2, "y": 1, "x": 0}[view_direction]
 
         if np.isinf(bb[0][x_index]) or np.isinf(bb[1][x_index]):
-            x_min = col1.number_input(
-                label="minimum vertical axis value", key="x_min"
-            )
-            x_max = col1.number_input(
-                label="maximum vertical axis value", key="x_max"
-            )
+            x_min = col1.number_input(label="minimum vertical axis value", key="x_min")
+            x_max = col1.number_input(label="maximum vertical axis value", key="x_max")
         else:
             x_min = float(bb[0][x_index])
             x_max = float(bb[1][x_index])
 
         # y axis is y values
         if np.isinf(bb[0][y_index]) or np.isinf(bb[1][y_index]):
-            y_min = col1.number_input(
-                label="minimum vertical axis value", key="y_min"
-            )
-            y_max = col1.number_input(
-                label="maximum vertical axis value", key="y_max"
-            )
+            y_min = col1.number_input(label="minimum vertical axis value", key="y_min")
+            y_max = col1.number_input(label="maximum vertical axis value", key="y_max")
         else:
             y_min = float(bb[0][y_index])
             y_max = float(bb[1][y_index])
 
         # slice axis is z
         if np.isinf(bb[0][slice_index]) or np.isinf(bb[1][slice_index]):
-            slice_min = col1.number_input(
-                label="minimum slice value", key="slice_min"
-            )
-            slice_max = col1.number_input(
-                label="maximum slice value", key="slice_max"
-            )
+            slice_min = col1.number_input(label="minimum slice value", key="slice_min")
+            slice_max = col1.number_input(label="maximum slice value", key="slice_max")
         else:
             slice_min = float(bb[0][slice_index])
             slice_max = float(bb[1][slice_index])
@@ -249,7 +240,7 @@ def main():
                 label="Slice value",
                 min_value=slice_min,
                 max_value=slice_max,
-                value=(slice_min + slice_max)/2,
+                value=(slice_min + slice_max) / 2,
                 key="slice_slider",
                 help="Set the value of the slice axis",
             )
@@ -266,9 +257,14 @@ def main():
             value=f"Slice through OpenMC geometry with view direction {view_direction}",
         )
         print(plot_left, plot_right, plot_top, plot_bottom)
-        if isinstance(plot_left, float) and isinstance(plot_right, float) and isinstance(plot_top, float) and isinstance(plot_bottom, float):
+        if (
+            isinstance(plot_left, float)
+            and isinstance(plot_right, float)
+            and isinstance(plot_top, float)
+            and isinstance(plot_bottom, float)
+        ):
             if color_by == "cells":
-                print('getting cell id slice')
+                print("getting cell id slice")
                 color_data_slice = my_geometry.get_slice_of_cell_ids(
                     view_direction=view_direction,
                     plot_left=plot_left,
@@ -276,7 +272,7 @@ def main():
                     plot_top=plot_top,
                     plot_bottom=plot_bottom,
                     pixels_across=pixels_across,
-                    slice_value=slice_value
+                    slice_value=slice_value,
                 )
             elif color_by == "materials":
                 color_data_slice = my_geometry.get_slice_of_material_ids(
@@ -286,7 +282,7 @@ def main():
                     plot_top=plot_top,
                     plot_bottom=plot_bottom,
                     pixels_across=pixels_across,
-                    slice_value=slice_value
+                    slice_value=slice_value,
                 )
 
             (xlabel, ylabel) = my_geometry.get_axis_labels(
@@ -295,7 +291,13 @@ def main():
             if backend == "matplotlib":
 
                 extent = my_geometry.get_plot_extent(
-                    plot_left, plot_right, plot_bottom, plot_top, slice_value, bb, view_direction
+                    plot_left,
+                    plot_right,
+                    plot_bottom,
+                    plot_top,
+                    slice_value,
+                    bb,
+                    view_direction,
                 )
                 extent = extent[:-1]
                 plt.imshow(
@@ -312,7 +314,7 @@ def main():
                     # gets unique levels for outlines contour plot
                     if outline == color_by:
                         outline_data_slice = color_data_slice
-                    elif outline == 'cells':
+                    elif outline == "cells":
                         outline_data_slice = my_geometry.get_slice_of_cell_ids(
                             view_direction=view_direction,
                             plot_left=plot_left,
@@ -320,9 +322,9 @@ def main():
                             plot_top=plot_top,
                             plot_bottom=plot_bottom,
                             pixels_across=pixels_across,
-                            slice_value=slice_value
+                            slice_value=slice_value,
                         )
-                    elif outline == 'materials':
+                    elif outline == "materials":
                         outline_data_slice = my_geometry.get_slice_of_material_ids(
                             view_direction=view_direction,
                             plot_left=plot_left,
@@ -330,10 +332,12 @@ def main():
                             plot_top=plot_top,
                             plot_bottom=plot_bottom,
                             pixels_across=pixels_across,
-                            slice_value=slice_value
+                            slice_value=slice_value,
                         )
                     else:
-                        raise ValueError(f'outline can only be cells or materials, not {outline}')
+                        raise ValueError(
+                            f"outline can only be cells or materials, not {outline}"
+                        )
 
                     levels = np.unique(
                         [item for sublist in outline_data_slice for item in sublist]
