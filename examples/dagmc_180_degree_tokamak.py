@@ -7,7 +7,7 @@ import openmc
 import openmc_geometry_plot  # adds plot_axis_slice to openmc.Geometry
 
 # minimal openmc.Geoemtry made just from a single DAGMC file with a bounding surface
-bound_dag_univ = openmc.DAGMCUniverse(filename="dagmc.h5m").bounded_universe()
+bound_dag_univ = openmc.DAGMCUniverse(filename="dagmc_180_tokamak.h5m").bounded_universe()
 my_geometry = openmc.Geometry(root=bound_dag_univ)
 
 
