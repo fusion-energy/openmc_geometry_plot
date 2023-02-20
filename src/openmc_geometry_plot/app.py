@@ -269,7 +269,7 @@ def main():
         if isinstance(plot_left, float) and isinstance(plot_right, float) and isinstance(plot_top, float) and isinstance(plot_bottom, float):
             if color_by == "cells":
                 print('getting cell id slice')
-                data_slice = my_geometry.get_slice_of_cell_ids(
+                color_data_slice = my_geometry.get_slice_of_cell_ids(
                     view_direction=view_direction,
                     plot_left=plot_left,
                     plot_right=plot_right,
@@ -279,7 +279,7 @@ def main():
                     slice_value=slice_value
                 )
             elif color_by == "materials":
-                data_slice = my_geometry.get_slice_of_material_ids(
+                color_data_slice = my_geometry.get_slice_of_material_ids(
                     view_direction=view_direction,
                     plot_left=plot_left,
                     plot_right=plot_right,
@@ -299,7 +299,7 @@ def main():
                 )
                 extent = extent[:-1]
                 plt.imshow(
-                    data_slice,
+                    color_data_slice,
                     extent=extent,
                     interpolation="none",
                 )
@@ -310,11 +310,36 @@ def main():
 
                 if outline is not None:
                     # gets unique levels for outlines contour plot
+                    if outline == color_by:
+                        outline_data_slice = color_data_slice
+                    elif outline == 'cells':
+                        outline_data_slice = my_geometry.get_slice_of_cell_ids(
+                            view_direction=view_direction,
+                            plot_left=plot_left,
+                            plot_right=plot_right,
+                            plot_top=plot_top,
+                            plot_bottom=plot_bottom,
+                            pixels_across=pixels_across,
+                            slice_value=slice_value
+                        )
+                    elif outline == 'materials':
+                        outline_data_slice = my_geometry.get_slice_of_material_ids(
+                            view_direction=view_direction,
+                            plot_left=plot_left,
+                            plot_right=plot_right,
+                            plot_top=plot_top,
+                            plot_bottom=plot_bottom,
+                            pixels_across=pixels_across,
+                            slice_value=slice_value
+                        )
+                    else:
+                        raise ValueError(f'outline can only be cells or materials, not {outline}')
+
                     levels = np.unique(
-                        [item for sublist in data_slice for item in sublist]
+                        [item for sublist in outline_data_slice for item in sublist]
                     )
                     plt.contour(
-                        data_slice,
+                        outline_data_slice,
                         origin="upper",
                         colors="k",
                         linestyles="solid",
