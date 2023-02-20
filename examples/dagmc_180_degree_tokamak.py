@@ -1,4 +1,3 @@
-
 from pathlib import Path
 
 import matplotlib.pylab as plt
@@ -7,16 +6,16 @@ import openmc
 import openmc_geometry_plot  # adds plot_axis_slice to openmc.Geometry
 
 # minimal openmc.Geoemtry made just from a single DAGMC file with a bounding surface
-bound_dag_univ = openmc.DAGMCUniverse(filename="dagmc_180_tokamak.h5m").bounded_universe()
+bound_dag_univ = openmc.DAGMCUniverse(
+    filename="dagmc_180_tokamak.h5m"
+).bounded_universe()
 my_geometry = openmc.Geometry(root=bound_dag_univ)
 
 
 # example code for plotting materials of the geometry with an outline
 
 data_slice = my_geometry.get_slice_of_material_ids(
-    view_direction="y",
-    slice_value=1,
-    pixels_across=1000
+    view_direction="y", slice_value=1, pixels_across=1000
 )
 
 xlabel, ylabel = my_geometry.get_axis_labels(view_direction="y")

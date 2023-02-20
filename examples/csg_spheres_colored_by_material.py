@@ -37,7 +37,7 @@ cell2.fill = mat2
 cell3 = openmc.Cell(region=region3)
 cell3.fill = mat1
 
-my_geometry = openmc.Geometry(    [cell1, cell2, cell3])
+my_geometry = openmc.Geometry([cell1, cell2, cell3])
 
 
 # this part plots the geometry with colors
@@ -58,7 +58,7 @@ norm = colors.BoundaryNorm(bounds, cmap.N)
 
 plot_extent = my_geometry.get_mpl_plot_extent(view_direction="z")
 
-# shows slice of material ids colored with colour map 
+# shows slice of material ids colored with colour map
 plt.imshow(
     data_slice,
     extent=plot_extent,

@@ -10,7 +10,7 @@ from matplotlib import colors
 mat = openmc.Material()
 mat.set_density("g/cm3", 1)
 mat.id = 1
-mat.name = 'lead'
+mat.name = "lead"
 mat.add_element("Pb", 1)
 
 mats = openmc.Materials([mat])
@@ -30,16 +30,16 @@ region3 = +surf2 & -surf3
 # cells
 cell1 = openmc.Cell(region=region1)
 cell1.id = 1
-cell1.name = 'cell 1'
+cell1.name = "cell 1"
 # cell 1 is not filled with any material
 cell2 = openmc.Cell(region=region2)
 cell2.id = 2
 cell2.fill = mat
-cell2.name = 'cell 2'
+cell2.name = "cell 2"
 cell3 = openmc.Cell(region=region3)
 cell3.fill = mat
 cell3.id = 3
-cell3.name = 'cell 3'
+cell3.name = "cell 3"
 
 my_geometry = openmc.Geometry([cell1, cell2, cell3])
 
@@ -50,12 +50,14 @@ xlabel, ylabel = my_geometry.get_axis_labels(view_direction="x")
 
 ax1.set_xlabel(xlabel)
 ax1.set_ylabel(ylabel)
-ax1.set_title('material ids')
+ax1.set_title("material ids")
 ax2.set_xlabel(xlabel)
 ax2.set_ylabel(ylabel)
-ax2.set_title('cell ids')
+ax2.set_title("cell ids")
 
-mat_id_slice = my_geometry.get_slice_of_material_ids(view_direction="x", pixels_across=600)
+mat_id_slice = my_geometry.get_slice_of_material_ids(
+    view_direction="x", pixels_across=600
+)
 cell_id_slice = my_geometry.get_slice_of_cell_ids(view_direction="x", pixels_across=600)
 
 # gets unique levels for outlines contour plot and for the color scale
@@ -126,14 +128,14 @@ cell_labels = {1: "cell 1", 2: "cell 2", 3: "cell 3"}
 
 mat_patches = [
     mpatches.Patch(color=colors_mat[i], label=mat_labels[mat_levels[i]])
-    for i in range(len(mat_levels))[1:]  # skips the first 0 value 
+    for i in range(len(mat_levels))[1:]  # skips the first 0 value
 ]
 cell_patches = [
     mpatches.Patch(color=colors_cells[i], label=cell_labels[cell_levels[i]])
-    for i in range(len(cell_levels))[1:]  # skips the first 0 value 
+    for i in range(len(cell_levels))[1:]  # skips the first 0 value
 ]
 
-ax1.legend(handles=mat_patches, bbox_to_anchor=(0.5, -0.55), loc='lower center')
-ax2.legend(handles=cell_patches, bbox_to_anchor=(0.5, -0.55), loc='lower center')
+ax1.legend(handles=mat_patches, bbox_to_anchor=(0.5, -0.55), loc="lower center")
+ax2.legend(handles=cell_patches, bbox_to_anchor=(0.5, -0.55), loc="lower center")
 
 plt.show()

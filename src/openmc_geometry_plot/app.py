@@ -90,26 +90,29 @@ def main():
         save_uploadedfile(dagmc_file)
         save_uploadedfile(geometry_xml_file)
 
-        bound_dag_univ = openmc.DAGMCUniverse(filename=dagmc_file.name).bounded_universe()
+        bound_dag_univ = openmc.DAGMCUniverse(
+            filename=dagmc_file.name
+        ).bounded_universe()
         my_geometry = openmc.Geometry(root=bound_dag_univ)
 
         dag_universe = my_geometry.get_dagmc_universe()
 
-        mat_ids = range(0, len(dag_universe.material_names)+1)
+        mat_ids = range(0, len(dag_universe.material_names) + 1)
 
     elif dagmc_file != None and geometry_xml_file == None:
 
         save_uploadedfile(dagmc_file)
 
         # make a basic openmc geometry
-        bound_dag_univ = openmc.DAGMCUniverse(filename=dagmc_file.name).bounded_universe()
+        bound_dag_univ = openmc.DAGMCUniverse(
+            filename=dagmc_file.name
+        ).bounded_universe()
         my_geometry = openmc.Geometry(root=bound_dag_univ)
 
         dag_universe = my_geometry.get_dagmc_universe()
 
         # find all material names
-        mat_ids = range(0, len(dag_universe.material_names)+1)
-        
+        mat_ids = range(0, len(dag_universe.material_names) + 1)
 
         # make a pretend material for each one
 
@@ -147,9 +150,9 @@ def main():
         )
 
     if my_geometry:
-        print('geometry is something so plotting')
+        print("geometry is set to something so attempting to plot")
         bb = my_geometry.bounding_box
-        print('bb', bb)
+        print("bb", bb)
 
         col1, col2 = st.columns([1, 3])
 
@@ -186,122 +189,32 @@ def main():
         x_min, x_max = None, None
         y_min, y_max = None, None
 
-        if view_direction in ["z"]:
-            # x axis is x values
-            if np.isinf(bb[0][0]) or np.isinf(bb[1][0]):
-                x_min = col1.number_input(
-                    label="minimum vertical axis value", key="x_min"
-                )
-                x_max = col1.number_input(
-                    label="maximum vertical axis value", key="x_max"
-                )
-            else:
-                x_min = float(bb[0][0])
-                x_max = float(bb[1][0])
-            print('x_min', x_min)
-            print('x_max', x_max)
+        x_index = {"z": 0, "y": 0, "x": 1}[view_direction]
+        y_index = {"z": 1, "y": 2, "x": 2}[view_direction]
+        slice_index = {"z": 2, "y": 1, "x": 0}[view_direction]
 
-            # y axis is y values
-            if np.isinf(bb[0][1]) or np.isinf(bb[1][1]):
-                y_min = col1.number_input(
-                    label="minimum vertical axis value", key="y_min"
-                )
-                y_max = col1.number_input(
-                    label="maximum vertical axis value", key="y_max"
-                )
-            else:
-                y_min = float(bb[0][1])
-                y_max = float(bb[1][1])
-            print('y_min', y_min)
-            print('y_max', y_max)
+        if np.isinf(bb[0][x_index]) or np.isinf(bb[1][x_index]):
+            x_min = col1.number_input(label="minimum vertical axis value", key="x_min")
+            x_max = col1.number_input(label="maximum vertical axis value", key="x_max")
+        else:
+            x_min = float(bb[0][x_index])
+            x_max = float(bb[1][x_index])
 
-            # slice axis is z
-            if np.isinf(bb[0][2]) or np.isinf(bb[1][2]):
-                slice_min = col1.number_input(
-                    label="minimum slice value", key="slice_min"
-                )
-                slice_max = col1.number_input(
-                    label="maximum slice value", key="slice_max"
-                )
-            else:
-                slice_min = float(bb[0][2])
-                slice_max = float(bb[1][2])
-            print('slice_min', slice_min)
-            print('slice_max', slice_max)
+        # y axis is y values
+        if np.isinf(bb[0][y_index]) or np.isinf(bb[1][y_index]):
+            y_min = col1.number_input(label="minimum vertical axis value", key="y_min")
+            y_max = col1.number_input(label="maximum vertical axis value", key="y_max")
+        else:
+            y_min = float(bb[0][y_index])
+            y_max = float(bb[1][y_index])
 
-        if view_direction in ["y"]:
-            # x axis is x values
-            if np.isinf(bb[0][0]) or np.isinf(bb[1][0]):
-                x_min = col1.number_input(
-                    label="minimum horizontal axis value", key="x_min"
-                )
-                x_max = col1.number_input(
-                    label="maximum horizontal axis value", key="x_max"
-                )
-            else:
-                x_min = float(bb[0][0])
-                x_max = float(bb[1][0])
-
-            # y axis is z values
-            if np.isinf(bb[0][2]) or np.isinf(bb[1][2]):
-                y_min = col1.number_input(
-                    label="minimum vertical axis value", key="y_min"
-                )
-                y_max = col1.number_input(
-                    label="maximum vertical axis value", key="y_max"
-                )
-            else:
-                y_min = float(bb[0][2])
-                y_max = float(bb[1][2])
-
-            # slice axis is z
-            if np.isinf(bb[0][1]) or np.isinf(bb[1][1]):
-                slice_min = col1.number_input(
-                    label="minimum slice value", key="slice_min"
-                )
-                slice_max = col1.number_input(
-                    label="maximum slice value", key="slice_max"
-                )
-            else:
-                slice_min = float(bb[0][1])
-                slice_max = float(bb[1][1])
-            print('slice_min', slice_min)
-            print('slice_max', slice_max)
-
-        if view_direction in ["x"]:
-            # x axis is y values
-            if np.isinf(bb[0][1]) or np.isinf(bb[1][1]):
-                x_min = col1.number_input(label="minimum vertical axis value")
-                x_max = col1.number_input(label="maximum vertical axis value")
-            else:
-                x_min = float(bb[0][1])
-                x_max = float(bb[1][1])
-
-            # y axis is z values
-            if np.isinf(bb[0][2]) or np.isinf(bb[1][2]):
-                y_min = col1.number_input(
-                    label="minimum vertical axis value", key="y_min"
-                )
-                y_max = col1.number_input(
-                    label="maximum vertical axis value", key="y_max"
-                )
-            else:
-                y_min = float(bb[0][2])
-                y_max = float(bb[1][2])
-
-            # slice axis is z
-            if np.isinf(bb[0][0]) or np.isinf(bb[1][0]):
-                slice_min = col1.number_input(
-                    label="minimum slice value", key="slice_min"
-                )
-                slice_max = col1.number_input(
-                    label="maximum slice value", key="slice_max"
-                )
-            else:
-                slice_min = float(bb[0][0])
-                slice_max = float(bb[1][0])
-            print('slice_min', slice_min)
-            print('slice_max', slice_max)
+        # slice axis is z
+        if np.isinf(bb[0][slice_index]) or np.isinf(bb[1][slice_index]):
+            slice_min = col1.number_input(label="minimum slice value", key="slice_min")
+            slice_max = col1.number_input(label="maximum slice value", key="slice_max")
+        else:
+            slice_min = float(bb[0][slice_index])
+            slice_max = float(bb[1][slice_index])
 
         if isinstance(x_min, float) and isinstance(x_max, float):
             plot_left, plot_right = col1.slider(
@@ -327,7 +240,7 @@ def main():
                 label="Slice value",
                 min_value=slice_min,
                 max_value=slice_max,
-                value=(slice_min + slice_max)/2,
+                value=(slice_min + slice_max) / 2,
                 key="slice_slider",
                 help="Set the value of the slice axis",
             )
@@ -344,27 +257,32 @@ def main():
             value=f"Slice through OpenMC geometry with view direction {view_direction}",
         )
         print(plot_left, plot_right, plot_top, plot_bottom)
-        if isinstance(plot_left, float) and isinstance(plot_right, float) and isinstance(plot_top, float) and isinstance(plot_bottom, float):
+        if (
+            isinstance(plot_left, float)
+            and isinstance(plot_right, float)
+            and isinstance(plot_top, float)
+            and isinstance(plot_bottom, float)
+        ):
             if color_by == "cells":
-                print('getting cell id slice')
-                data_slice = my_geometry.get_slice_of_cell_ids(
+                print("getting cell id slice")
+                color_data_slice = my_geometry.get_slice_of_cell_ids(
                     view_direction=view_direction,
                     plot_left=plot_left,
                     plot_right=plot_right,
                     plot_top=plot_top,
                     plot_bottom=plot_bottom,
                     pixels_across=pixels_across,
-                    slice_value=slice_value
+                    slice_value=slice_value,
                 )
             elif color_by == "materials":
-                data_slice = my_geometry.get_slice_of_material_ids(
+                color_data_slice = my_geometry.get_slice_of_material_ids(
                     view_direction=view_direction,
                     plot_left=plot_left,
                     plot_right=plot_right,
                     plot_top=plot_top,
                     plot_bottom=plot_bottom,
                     pixels_across=pixels_across,
-                    slice_value=slice_value
+                    slice_value=slice_value,
                 )
 
             (xlabel, ylabel) = my_geometry.get_axis_labels(
@@ -373,11 +291,17 @@ def main():
             if backend == "matplotlib":
 
                 extent = my_geometry.get_plot_extent(
-                    plot_left, plot_right, plot_bottom, plot_top, slice_value, bb, view_direction
+                    plot_left,
+                    plot_right,
+                    plot_bottom,
+                    plot_top,
+                    slice_value,
+                    bb,
+                    view_direction,
                 )
                 extent = extent[:-1]
                 plt.imshow(
-                    data_slice,
+                    color_data_slice,
                     extent=extent,
                     interpolation="none",
                 )
@@ -388,11 +312,38 @@ def main():
 
                 if outline is not None:
                     # gets unique levels for outlines contour plot
+                    if outline == color_by:
+                        outline_data_slice = color_data_slice
+                    elif outline == "cells":
+                        outline_data_slice = my_geometry.get_slice_of_cell_ids(
+                            view_direction=view_direction,
+                            plot_left=plot_left,
+                            plot_right=plot_right,
+                            plot_top=plot_top,
+                            plot_bottom=plot_bottom,
+                            pixels_across=pixels_across,
+                            slice_value=slice_value,
+                        )
+                    elif outline == "materials":
+                        outline_data_slice = my_geometry.get_slice_of_material_ids(
+                            view_direction=view_direction,
+                            plot_left=plot_left,
+                            plot_right=plot_right,
+                            plot_top=plot_top,
+                            plot_bottom=plot_bottom,
+                            pixels_across=pixels_across,
+                            slice_value=slice_value,
+                        )
+                    else:
+                        raise ValueError(
+                            f"outline can only be cells or materials, not {outline}"
+                        )
+
                     levels = np.unique(
-                        [item for sublist in data_slice for item in sublist]
+                        [item for sublist in outline_data_slice for item in sublist]
                     )
                     plt.contour(
-                        data_slice,
+                        outline_data_slice,
                         origin="upper",
                         colors="k",
                         linestyles="solid",
