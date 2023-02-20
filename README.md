@@ -34,4 +34,4 @@ See the [examples folder](https://github.com/fusion-energy/openmc_geometry_plot/
 
 ## Graphical User Interface (GUI) usage
 
-After installing run ```openmc_geometry_plot``` command from the terminal and the GUI should launch in a new browser window.
+After installing run the ```openmc_geometry_plot``` command from the terminal and the GUI should launch in a new browser window.

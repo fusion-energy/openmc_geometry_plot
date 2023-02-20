@@ -193,7 +193,8 @@ def get_slice_of_material_ids(
     """
 
     tmp_folder = mkdtemp(prefix="openmc_geometry_plotter_tmp_files_")
-    print(f"writing files to {tmp_folder}")
+    if verbose:
+        print(f"writing files to {tmp_folder}")
 
     if self.is_geometry_dagmc():
         dagmc_abs_filepath = self.get_dagmc_filepath()
@@ -249,7 +250,6 @@ def get_slice_of_material_ids(
 
     all_materials = []
     for i, n in zip(mat_ids, mat_names):
-        print(i, n)
         new_mat = openmc.Material()
         new_mat.id = i
         new_mat.name = n
@@ -302,7 +302,8 @@ def get_slice_of_material_ids(
 
     openmc.plot_geometry(cwd=tmp_folder, output=verbose)
 
-    print(f"Temporary image and xml files written to {tmp_folder}")
+    if verbose:
+        print(f"Temporary image and xml files written to {tmp_folder}")
 
     # load the image
     if (Path(tmp_folder) / f"plot_{my_plot.id}.ppm").is_file():
@@ -343,7 +344,7 @@ def get_slice_of_cell_ids(
     plot_left: typing.Optional[float] = None,
     plot_right: typing.Optional[float] = None,
     pixels_across: int = 500,
-    verbose: bool = False
+    verbose: bool = False,
 ):
     """Returns a grid of cell IDs for each mesh voxel on the slice. This
     can be passed directly to plotting functions like Matplotlib imshow. 0
@@ -360,7 +361,8 @@ def get_slice_of_cell_ids(
     """
 
     tmp_folder = mkdtemp(prefix="openmc_geometry_plotter_tmp_files_")
-    print(f"writing files to {tmp_folder}")
+    if verbose:
+        print(f"writing files to {tmp_folder}")
 
     if self.is_geometry_dagmc():
         dagmc_abs_filepath = self.get_dagmc_filepath()
@@ -390,20 +392,19 @@ def get_slice_of_cell_ids(
         # if any of the plot_ are None then this needs calculating
         # might need to be self.bounding_box
         bb = dag_universe.bounding_box
-        print('dagmc found')
-        print('dagmc found')
-        print('dagmc found')
-        print('dagmc found')
+
     else:
         
         original_materials = self.get_all_materials()
         mat_ids = original_materials.keys()
 
-        # mat_names = []
-        # for key, value in original_materials.items():
-        #     mat_names.append(value.name)
+        mat_names = []
+        for key, value in original_materials.items():
+            mat_names.append(value.name)
             
         bb = self.bounding_box
+    
+    self.export_to_xml(tmp_folder)
 
     plot_left, plot_right, plot_bottom, plot_top, slice_value = self.get_plot_extent(
         plot_left, plot_right, plot_bottom, plot_top, slice_value, bb, view_direction
@@ -415,23 +416,21 @@ def get_slice_of_cell_ids(
     aspect_ratio = plot_height / plot_width
     pixels_up = int(pixels_across * aspect_ratio)
 
+    # might not work for dagmc model
     cell_ids = self.get_all_cells().keys()
 
     all_materials = []
-    for i in mat_ids:
-        print(i, mat_ids)
-        n = openmc.Material()
-        n.id = i
-        n.add_nuclide("He4", 1)
-        all_materials.append(n)
+    for i, n in zip(mat_ids, mat_names):
+        new_mat = openmc.Material()
+        new_mat.id = i
+        new_mat.name = n
+        new_mat.add_nuclide("He4", 1)
+        all_materials.append(new_mat)
     nn = openmc.Materials(all_materials)
-    tmp_folder = mkdtemp(prefix="openmc_geometry_plotter_tmp_files_")
     nn.export_to_xml(tmp_folder)
-    self.export_to_xml(tmp_folder)
 
     my_settings = openmc.Settings()
     my_settings.output = {"summary": False, "tallies": False}
-    # add verbose setting to avoid print out
     my_settings.particles = 1
     my_settings.batches = 1
     my_settings.run_mode = "fixed source"
@@ -461,7 +460,7 @@ def get_slice_of_cell_ids(
     colors_dict = {}
     for cell_id in cell_ids:
         # TODO make use of rgb to int convertor
-        colors_dict[cell_id] = (cell_id, cell_id, cell_id)
+        colors_dict[cell_id] = get_rgb_from_int(cell_id)
     my_plot.colors = colors_dict
     my_plot.background = (0, 0, 0)  # void material is 0
     my_plot.color_by = "cell"
@@ -474,8 +473,8 @@ def get_slice_of_cell_ids(
     openmc.config["cross_sections"] = package_dir / "cross_sections.xml"
 
     openmc.plot_geometry(cwd=tmp_folder, output=verbose)
-
-    print(f"Temporary image and xml files written to {tmp_folder}")
+    if verbose:
+        print(f"Temporary image and xml files written to {tmp_folder}")
 
     # load the image
     if (Path(tmp_folder) / f"plot_{my_plot.id}.ppm").is_file():
@@ -491,14 +490,14 @@ def get_slice_of_cell_ids(
     # the image_values have three entries for RGB but we just need one.
     # this reduces the nested list to contain a single value per pixel
     image_value = [
-        [inner_entry[0] for inner_entry in outer_entry] for outer_entry in image_values
+        [get_int_from_rgb(inner_entry) for inner_entry in outer_entry] for outer_entry in image_values
     ]
 
-    # replaces and 255 values with 0.
+    # replaces rgb (255,255,255) which is 16777215 values with 0.
     # 0 is the color for void space
-    # 255 gets returned by undefined regions outside the geometry
+    # (255,255,255) gets returned by undefined regions outside the geometry
     trimmed_image_value = [
-        [0 if x == 255 else x for x in inner_list] for inner_list in image_value
+        [0 if x == 16777215 else x for x in inner_list] for inner_list in image_value
     ]
 
     return trimmed_image_value
