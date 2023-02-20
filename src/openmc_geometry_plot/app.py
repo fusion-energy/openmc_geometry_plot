@@ -147,7 +147,7 @@ def main():
         )
 
     if my_geometry:
-        print('geometry is something so plotting')
+        print('geometry is set to something so attempting to plot')
         bb = my_geometry.bounding_box
         print('bb', bb)
 
@@ -186,122 +186,44 @@ def main():
         x_min, x_max = None, None
         y_min, y_max = None, None
 
-        if view_direction in ["z"]:
-            # x axis is x values
-            if np.isinf(bb[0][0]) or np.isinf(bb[1][0]):
-                x_min = col1.number_input(
-                    label="minimum vertical axis value", key="x_min"
-                )
-                x_max = col1.number_input(
-                    label="maximum vertical axis value", key="x_max"
-                )
-            else:
-                x_min = float(bb[0][0])
-                x_max = float(bb[1][0])
-            print('x_min', x_min)
-            print('x_max', x_max)
+        x_index = {"z": 0, "y": 0, "x": 1}[view_direction]
+        y_index = {"z": 1, "y": 2, "x": 2}[view_direction]
+        slice_index = {"z": 2, "y": 1, "x": 0}[view_direction]
 
-            # y axis is y values
-            if np.isinf(bb[0][1]) or np.isinf(bb[1][1]):
-                y_min = col1.number_input(
-                    label="minimum vertical axis value", key="y_min"
-                )
-                y_max = col1.number_input(
-                    label="maximum vertical axis value", key="y_max"
-                )
-            else:
-                y_min = float(bb[0][1])
-                y_max = float(bb[1][1])
-            print('y_min', y_min)
-            print('y_max', y_max)
+        if np.isinf(bb[0][x_index]) or np.isinf(bb[1][x_index]):
+            x_min = col1.number_input(
+                label="minimum vertical axis value", key="x_min"
+            )
+            x_max = col1.number_input(
+                label="maximum vertical axis value", key="x_max"
+            )
+        else:
+            x_min = float(bb[0][x_index])
+            x_max = float(bb[1][x_index])
 
-            # slice axis is z
-            if np.isinf(bb[0][2]) or np.isinf(bb[1][2]):
-                slice_min = col1.number_input(
-                    label="minimum slice value", key="slice_min"
-                )
-                slice_max = col1.number_input(
-                    label="maximum slice value", key="slice_max"
-                )
-            else:
-                slice_min = float(bb[0][2])
-                slice_max = float(bb[1][2])
-            print('slice_min', slice_min)
-            print('slice_max', slice_max)
+        # y axis is y values
+        if np.isinf(bb[0][y_index]) or np.isinf(bb[1][y_index]):
+            y_min = col1.number_input(
+                label="minimum vertical axis value", key="y_min"
+            )
+            y_max = col1.number_input(
+                label="maximum vertical axis value", key="y_max"
+            )
+        else:
+            y_min = float(bb[0][y_index])
+            y_max = float(bb[1][y_index])
 
-        if view_direction in ["y"]:
-            # x axis is x values
-            if np.isinf(bb[0][0]) or np.isinf(bb[1][0]):
-                x_min = col1.number_input(
-                    label="minimum horizontal axis value", key="x_min"
-                )
-                x_max = col1.number_input(
-                    label="maximum horizontal axis value", key="x_max"
-                )
-            else:
-                x_min = float(bb[0][0])
-                x_max = float(bb[1][0])
-
-            # y axis is z values
-            if np.isinf(bb[0][2]) or np.isinf(bb[1][2]):
-                y_min = col1.number_input(
-                    label="minimum vertical axis value", key="y_min"
-                )
-                y_max = col1.number_input(
-                    label="maximum vertical axis value", key="y_max"
-                )
-            else:
-                y_min = float(bb[0][2])
-                y_max = float(bb[1][2])
-
-            # slice axis is z
-            if np.isinf(bb[0][1]) or np.isinf(bb[1][1]):
-                slice_min = col1.number_input(
-                    label="minimum slice value", key="slice_min"
-                )
-                slice_max = col1.number_input(
-                    label="maximum slice value", key="slice_max"
-                )
-            else:
-                slice_min = float(bb[0][1])
-                slice_max = float(bb[1][1])
-            print('slice_min', slice_min)
-            print('slice_max', slice_max)
-
-        if view_direction in ["x"]:
-            # x axis is y values
-            if np.isinf(bb[0][1]) or np.isinf(bb[1][1]):
-                x_min = col1.number_input(label="minimum vertical axis value")
-                x_max = col1.number_input(label="maximum vertical axis value")
-            else:
-                x_min = float(bb[0][1])
-                x_max = float(bb[1][1])
-
-            # y axis is z values
-            if np.isinf(bb[0][2]) or np.isinf(bb[1][2]):
-                y_min = col1.number_input(
-                    label="minimum vertical axis value", key="y_min"
-                )
-                y_max = col1.number_input(
-                    label="maximum vertical axis value", key="y_max"
-                )
-            else:
-                y_min = float(bb[0][2])
-                y_max = float(bb[1][2])
-
-            # slice axis is z
-            if np.isinf(bb[0][0]) or np.isinf(bb[1][0]):
-                slice_min = col1.number_input(
-                    label="minimum slice value", key="slice_min"
-                )
-                slice_max = col1.number_input(
-                    label="maximum slice value", key="slice_max"
-                )
-            else:
-                slice_min = float(bb[0][0])
-                slice_max = float(bb[1][0])
-            print('slice_min', slice_min)
-            print('slice_max', slice_max)
+        # slice axis is z
+        if np.isinf(bb[0][slice_index]) or np.isinf(bb[1][slice_index]):
+            slice_min = col1.number_input(
+                label="minimum slice value", key="slice_min"
+            )
+            slice_max = col1.number_input(
+                label="maximum slice value", key="slice_max"
+            )
+        else:
+            slice_min = float(bb[0][slice_index])
+            slice_max = float(bb[1][slice_index])
 
         if isinstance(x_min, float) and isinstance(x_max, float):
             plot_left, plot_right = col1.slider(

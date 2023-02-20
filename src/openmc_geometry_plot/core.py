@@ -10,17 +10,20 @@ from PIL import Image
 
 from numpy import asarray
 
+
 def get_rgb_from_int(value: int) -> typing.Tuple[int,int,int]:
     blue =  value & 255
     green = (value >> 8) & 255
     red =   (value >> 16) & 255
     return red, green, blue
 
+
 def get_int_from_rgb(rgb: typing.Tuple[int,int,int]) -> int:
     red = rgb[0]
     green = rgb[1]
     blue = rgb[2]
     return (red<<16) + (green<<8) + blue
+
 
 def get_plot_extent(
     self, plot_left, plot_right, plot_bottom, plot_top, slice_value, bb, view_direction
