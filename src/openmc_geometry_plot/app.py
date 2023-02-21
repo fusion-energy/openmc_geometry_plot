@@ -4,8 +4,10 @@ import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 import openmc
 import streamlit as st
-from pylab import *
-
+from matplotlib import colors
+from pylab import cm, colormaps # *
+import numpy as np
+# import dagmc_h5m_file_inspector as di
 
 import openmc_geometry_plot  # adds extra functions to openmc.Geometry
 
@@ -77,7 +79,7 @@ def main():
 
     my_geometry = None
 
-    if dagmc_file == None and geometry_xml_file == None:
+    if dagmc_file is None and geometry_xml_file is None:
         new_title = '<center><p style="font-family:sans-serif; color:Red; font-size: 30px;">Upload your geometry.xml or DAGMC h5m file</p></center>'
         st.markdown(new_title, unsafe_allow_html=True)
 
@@ -85,7 +87,7 @@ def main():
         st.markdown(sub_title, unsafe_allow_html=True)
 
     # DAGMC route
-    elif dagmc_file != None and geometry_xml_file != None:
+    elif dagmc_file is not None and geometry_xml_file is not None:
 
         save_uploadedfile(dagmc_file)
         save_uploadedfile(geometry_xml_file)
@@ -98,8 +100,19 @@ def main():
         dag_universe = my_geometry.get_dagmc_universe()
 
         mat_ids = range(0, len(dag_universe.material_names) + 1)
+        # mat_names = dag_universe.material_names
 
-    elif dagmc_file != None and geometry_xml_file == None:
+        if len(mat_ids) >= 1:
+            set_mat_ids = set(mat_ids)
+        else:
+            set_mat_ids = ()
+        
+        # set_cell_ids = set(di.get_volumes_from_h5m(dagmc_file.name))
+        set_cell_ids = list(range(1, dag_universe.n_cells+1))
+        set_mat_names = set(dag_universe.material_names)
+        all_cell_names = set_cell_ids
+
+    elif dagmc_file is not None and geometry_xml_file is None:
 
         save_uploadedfile(dagmc_file)
 
@@ -114,10 +127,18 @@ def main():
         # find all material names
         mat_ids = range(0, len(dag_universe.material_names) + 1)
 
-        # make a pretend material for each one
+        if len(mat_ids) >= 1:
+            set_mat_ids = set(mat_ids)
+        else:
+            set_mat_ids = ()
+        
+        # set_cell_ids = set(di.get_volumes_from_h5m(dagmc_file.name))
+        set_cell_ids = list(range(1, dag_universe.n_cells+1))
+        set_mat_names = set(dag_universe.material_names)
+        all_cell_names = set_cell_ids
 
     # CSG route
-    elif dagmc_file == None and geometry_xml_file != None:
+    elif dagmc_file is None and geometry_xml_file is not None:
         save_uploadedfile(geometry_xml_file)
 
         tree = ET.parse(geometry_xml_file.name)
@@ -125,17 +146,28 @@ def main():
         root = tree.getroot()
         all_cells = root.findall("cell")
         mat_ids = []
+        all_cells = []
+        all_cell_names = []
+
         for cell in all_cells:
             if "material" in cell.keys():
                 if cell.get("material") == "void":
                     print(f"material for cell {cell} is void")
                 else:
                     mat_ids.append(int(cell.get("material")))
+            all_cells.append(cell.id)
+            all_cell_names.append(cell.name)
 
         if len(mat_ids) >= 1:
             set_mat_ids = set(mat_ids)
         else:
             set_mat_ids = ()
+
+        set_mat_names = set_mat_ids # can't find material names in CSG with just the geometry xml as we don't have material names
+        set_cell_ids = set(all_cells)
+        set_cell_names = set(all_cell_names)
+
+        print('set_mat_ids', set_mat_ids)
 
         my_mats = openmc.Materials()
         for mat_id in set_mat_ids:
@@ -145,6 +177,7 @@ def main():
             # adds a single nuclide that is in minimal cross section xml to avoid material failing
             my_mats.append(new_mat)
 
+        print('my_mats', my_mats)
         my_geometry = openmc.Geometry.from_xml(
             path=geometry_xml_file.name, materials=my_mats
         )
@@ -251,6 +284,55 @@ def main():
             help="Increasing this value increases the image resolution but also requires longer to create the image",
         )
 
+        selected_color_map = col1.selectbox(label="Color map", options=colormaps(), index=82)  # index 81 is tab20c
+
+        if color_by == "materials":
+            
+            cmap = cm.get_cmap(selected_color_map, len(set_mat_ids))
+            initial_hex_color = []
+            for i in range(cmap.N):
+                rgba = cmap(i)
+                # rgb2hex accepts rgb or rgba
+                initial_hex_color.append(colors.rgb2hex(rgba))
+
+            for c, id in enumerate(set_mat_ids):
+                # todo add
+                st.color_picker(
+                    f"Color of material with id {id}",
+                    key=f"mat_{id}",
+                    value=initial_hex_color[c],
+                )
+
+            my_colors = {}
+            for id in set_mat_ids:
+                hex_color = st.session_state[f"mat_{id}"].lstrip("#")
+                RGB = tuple(int(hex_color[i : i + 2], 16)/255 for i in (0, 2, 4))
+                my_colors[id] = RGB
+
+        elif color_by == "cells":
+            cmap = cm.get_cmap(selected_color_map, len(set_cell_ids))
+            initial_hex_color = []
+            for i in range(cmap.N):
+                rgba = cmap(i)
+                # rgb2hex accepts rgb or rgba
+                initial_hex_color.append(colors.rgb2hex(rgba))
+
+            for c, (cell_id, cell_name) in enumerate(zip(set_cell_ids, all_cell_names)):
+                if cell_name in ['', None]:
+                    cell_name = 'not set'
+                st.color_picker(
+                    f"Color of cell id {cell_id}, cell name {cell_name}",
+                    key=f"cell_{cell_id}",
+                    value=initial_hex_color[c],
+                )
+
+            my_colors = {}
+            for id in set_cell_ids:
+                hex_color = st.session_state[f"cell_{id}"].lstrip("#")
+                RGB = tuple(int(hex_color[i : i + 2], 16)/255 for i in (0, 2, 4))
+                my_colors[id] = RGB
+
+
         title = col1.text_input(
             "Plot title",
             help="Optionally set your own title for the plot",
@@ -264,7 +346,6 @@ def main():
             and isinstance(plot_bottom, float)
         ):
             if color_by == "cells":
-                print("getting cell id slice")
                 color_data_slice = my_geometry.get_slice_of_cell_ids(
                     view_direction=view_direction,
                     plot_left=plot_left,
@@ -290,6 +371,7 @@ def main():
             )
             if outline is not None:
                 # gets unique levels for outlines contour plot
+                # this can be avoided if outline is the same as the color data
                 if outline == color_by:
                     outline_data_slice = color_data_slice
                 elif outline == "cells":
@@ -327,12 +409,21 @@ def main():
                     slice_value,
                     bb,
                     view_direction,
-                )
-                extent = extent[:-1]
+                )[:-1]  # slice value is returned in the function so removing with -1
+
+                print(my_colors.values())
+                print(my_colors.keys())
+                mat_cmap = colors.ListedColormap(my_colors.values())
+                # our material ids are set to be 1 and 2. void space is 0
+                mat_bounds = list(my_colors.keys())
+                mat_norm = colors.BoundaryNorm(mat_bounds, mat_cmap.N)
+                print(color_data_slice)
                 plt.imshow(
                     color_data_slice,
                     extent=extent,
                     interpolation="none",
+                    norm=mat_norm,  # needed for colors
+                    cmap=mat_cmap,  # needed for colors
                 )
 
                 plt.xlabel(xlabel)
