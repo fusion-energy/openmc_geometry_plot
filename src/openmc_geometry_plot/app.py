@@ -5,8 +5,9 @@ import matplotlib.pyplot as plt
 import openmc
 import streamlit as st
 from matplotlib import colors
-from pylab import cm, colormaps # *
+from pylab import cm, colormaps  # *
 import numpy as np
+
 # import dagmc_h5m_file_inspector as di
 
 import openmc_geometry_plot  # adds extra functions to openmc.Geometry
@@ -106,11 +107,12 @@ def main():
             set_mat_ids = set(mat_ids)
         else:
             set_mat_ids = ()
-        
+
         # set_cell_ids = set(di.get_volumes_from_h5m(dagmc_file.name))
-        set_cell_ids = list(range(1, dag_universe.n_cells+1))
+        set_cell_ids = list(range(1, dag_universe.n_cells + 1))
         set_mat_names = set(dag_universe.material_names)
         all_cell_names = set_cell_ids
+        set_cell_names = set(all_cell_names)
 
     elif dagmc_file is not None and geometry_xml_file is None:
 
@@ -131,11 +133,12 @@ def main():
             set_mat_ids = set(mat_ids)
         else:
             set_mat_ids = ()
-        
+
         # set_cell_ids = set(di.get_volumes_from_h5m(dagmc_file.name))
-        set_cell_ids = list(range(1, dag_universe.n_cells+1))
+        set_cell_ids = list(range(1, dag_universe.n_cells + 1))
         set_mat_names = set(dag_universe.material_names)
         all_cell_names = set_cell_ids
+        set_cell_names = set(all_cell_names)
 
     # CSG route
     elif dagmc_file is None and geometry_xml_file is not None:
@@ -146,46 +149,45 @@ def main():
         root = tree.getroot()
         all_cells = root.findall("cell")
         mat_ids = []
-        all_cells = []
-        all_cell_names = []
 
         for cell in all_cells:
             if "material" in cell.keys():
                 if cell.get("material") == "void":
+                    mat_ids.append(0)
                     print(f"material for cell {cell} is void")
                 else:
                     mat_ids.append(int(cell.get("material")))
-            all_cells.append(cell.id)
-            all_cell_names.append(cell.name)
 
         if len(mat_ids) >= 1:
             set_mat_ids = set(mat_ids)
         else:
             set_mat_ids = ()
 
-        set_mat_names = set_mat_ids # can't find material names in CSG with just the geometry xml as we don't have material names
-        set_cell_ids = set(all_cells)
-        set_cell_names = set(all_cell_names)
-
-        print('set_mat_ids', set_mat_ids)
+        set_mat_names = set_mat_ids  # can't find material names in CSG with just the geometry xml as we don't have material names
 
         my_mats = openmc.Materials()
         for mat_id in set_mat_ids:
             new_mat = openmc.Material()
             new_mat.id = mat_id
-            new_mat.add_nuclide("Li6", 1)
+            new_mat.add_nuclide("He4", 1)
             # adds a single nuclide that is in minimal cross section xml to avoid material failing
             my_mats.append(new_mat)
 
-        print('my_mats', my_mats)
         my_geometry = openmc.Geometry.from_xml(
             path=geometry_xml_file.name, materials=my_mats
         )
+        all_cell_ids = []
+        all_cell_names = []
+        all_cells = my_geometry.get_all_cells()
+        for cell_id, cell in all_cells.items():
+            all_cell_ids.append(cell.id)
+            all_cell_names.append(cell.name)
+        set_cell_ids = set(all_cell_ids)
+        set_cell_names = set(all_cell_names)
 
     if my_geometry:
         print("geometry is set to something so attempting to plot")
         bb = my_geometry.bounding_box
-        print("bb", bb)
 
         col1, col2 = st.columns([1, 3])
 
@@ -205,14 +207,14 @@ def main():
         )
         outline = col1.selectbox(
             label="Outline",
-            options=("cells", "materials", None),
+            options=("materials", "cells", None),
             index=0,
             key="outline",
             help="Allows an outline to be drawn around the cells or materials, select None for no outline",
         )
         color_by = col1.selectbox(
             label="Color by",
-            options=("cells", "materials"),
+            options=("materials", "cells"),
             index=0,
             key="color_by",
             help="Should the plot be colored by material or by cell",
@@ -284,10 +286,12 @@ def main():
             help="Increasing this value increases the image resolution but also requires longer to create the image",
         )
 
-        selected_color_map = col1.selectbox(label="Color map", options=colormaps(), index=82)  # index 81 is tab20c
+        selected_color_map = col1.selectbox(
+            label="Color map", options=colormaps(), index=82
+        )  # index 81 is tab20c
 
         if color_by == "materials":
-            
+
             cmap = cm.get_cmap(selected_color_map, len(set_mat_ids))
             initial_hex_color = []
             for i in range(cmap.N):
@@ -306,7 +310,7 @@ def main():
             my_colors = {}
             for id in set_mat_ids:
                 hex_color = st.session_state[f"mat_{id}"].lstrip("#")
-                RGB = tuple(int(hex_color[i : i + 2], 16)/255 for i in (0, 2, 4))
+                RGB = tuple(int(hex_color[i : i + 2], 16) / 255 for i in (0, 2, 4))
                 my_colors[id] = RGB
 
         elif color_by == "cells":
@@ -318,27 +322,26 @@ def main():
                 initial_hex_color.append(colors.rgb2hex(rgba))
 
             for c, (cell_id, cell_name) in enumerate(zip(set_cell_ids, all_cell_names)):
-                if cell_name in ['', None]:
-                    cell_name = 'not set'
+                if cell_name in ["", None]:
+                    cell_name = "not set"
                 st.color_picker(
                     f"Color of cell id {cell_id}, cell name {cell_name}",
                     key=f"cell_{cell_id}",
                     value=initial_hex_color[c],
                 )
 
-            my_colors = {}
+            my_colors = {0: (1, 1, 1)}  # adding entry for void cells
             for id in set_cell_ids:
                 hex_color = st.session_state[f"cell_{id}"].lstrip("#")
-                RGB = tuple(int(hex_color[i : i + 2], 16)/255 for i in (0, 2, 4))
+                RGB = tuple(int(hex_color[i : i + 2], 16) / 255 for i in (0, 2, 4))
                 my_colors[id] = RGB
-
 
         title = col1.text_input(
             "Plot title",
             help="Optionally set your own title for the plot",
             value=f"Slice through OpenMC geometry with view direction {view_direction}",
         )
-        print(plot_left, plot_right, plot_top, plot_bottom)
+
         if (
             isinstance(plot_left, float)
             and isinstance(plot_right, float)
@@ -400,7 +403,7 @@ def main():
                     )
 
             if backend == "matplotlib":
-    
+
                 extent = my_geometry.get_plot_extent(
                     plot_left,
                     plot_right,
@@ -409,15 +412,20 @@ def main():
                     slice_value,
                     bb,
                     view_direction,
-                )[:-1]  # slice value is returned in the function so removing with -1
+                )[
+                    :-1
+                ]  # slice value is returned in the function so removing with -1
 
-                print(my_colors.values())
-                print(my_colors.keys())
-                mat_cmap = colors.ListedColormap(my_colors.values())
+                bounds = list(my_colors.keys())
+                color_values = list(my_colors.values())
+
+                mat_cmap = colors.ListedColormap(color_values)
                 # our material ids are set to be 1 and 2. void space is 0
-                mat_bounds = list(my_colors.keys())
-                mat_norm = colors.BoundaryNorm(mat_bounds, mat_cmap.N)
-                print(color_data_slice)
+                # this +1 is needed as the bounds must be larger that the value to include the values
+                bounds.append(bounds[-1] + 1)
+
+                mat_norm = colors.BoundaryNorm(bounds, mat_cmap.N)
+
                 plt.imshow(
                     color_data_slice,
                     extent=extent,
@@ -456,45 +464,47 @@ def main():
                         mime="image/png",
                     )
             else:
-                
+
                 data = [
-                        go.Heatmap(
-                            z=color_data_slice,
-                            showscale=False,
-                            colorscale="viridis",
-                            x0=plot_left,
-                            dx=abs(plot_left - plot_right) / (len(color_data_slice[0]) - 1),
-                            y0=plot_bottom,
-                            dy=abs(plot_bottom - plot_top) / (len(color_data_slice) - 1),
-                            # colorbar=dict(title=dict(side="right", text=cbar_label)),
-                            # text = material_ids,
-                            # hovertemplate=
-                            # # 'material ID = %{z}<br>'+
-                            # "Cell ID = %{z}<br>" +
-                            # # '<br>%{text}<br>'+
-                            # xlabel[:2].title()
-                            # + ": %{x} cm<br>"
-                            # + ylabel[:2].title()
-                            # + ": %{y} cm<br>",
-                        )
+                    go.Heatmap(
+                        z=color_data_slice,
+                        showscale=False,
+                        colorscale="viridis",
+                        x0=plot_left,
+                        dx=abs(plot_left - plot_right) / (len(color_data_slice[0]) - 1),
+                        y0=plot_bottom,
+                        dy=abs(plot_bottom - plot_top) / (len(color_data_slice) - 1),
+                        # colorbar=dict(title=dict(side="right", text=cbar_label)),
+                        # text = material_ids,
+                        # hovertemplate=
+                        # # 'material ID = %{z}<br>'+
+                        # "Cell ID = %{z}<br>" +
+                        # # '<br>%{text}<br>'+
+                        # xlabel[:2].title()
+                        # + ": %{x} cm<br>"
+                        # + ylabel[:2].title()
+                        # + ": %{y} cm<br>",
+                    )
                 ]
-                
+
                 if outline is not None:
-                    
+
                     data.append(
                         go.Contour(
                             z=outline_data_slice,
                             x0=plot_left,
-                            dx=abs(plot_left - plot_right) / (len(outline_data_slice[0]) - 1),
+                            dx=abs(plot_left - plot_right)
+                            / (len(outline_data_slice[0]) - 1),
                             y0=plot_bottom,
-                            dy=abs(plot_bottom - plot_top) / (len(outline_data_slice) - 1),
+                            dy=abs(plot_bottom - plot_top)
+                            / (len(outline_data_slice) - 1),
                             contours_coloring="lines",
                             line_width=1,
                             colorscale=[[0, "rgb(0, 0, 0)"], [1.0, "rgb(0, 0, 0)"]],
                             showscale=False,
                         )
                     )
-                    
+
                 plot = go.Figure(data=data)
 
                 plot.update_layout(
@@ -520,6 +530,18 @@ def main():
                         mime=None,
                     )
                 col2.plotly_chart(plot, use_container_width=True)
+
+            col2.write("Model info")
+            col2.write(f"Material IDS found {set_mat_ids}")
+            col2.write(f"Material names found {set_mat_names}")
+            col2.write(f"Cell IDS found {set_cell_ids}")
+            col2.write(f"Cell names found {set_cell_names}")
+            col2.write(
+                f"Bounding box lower left x={bb[0][0]} y={bb[0][1]} z={bb[0][2]}"
+            )
+            col2.write(
+                f"Bounding box upper right x={bb[1][0]} y={bb[1][1]} z={bb[1][2]}"
+            )
 
 
 if __name__ == "__main__":
