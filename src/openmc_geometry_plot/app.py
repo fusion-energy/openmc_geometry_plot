@@ -217,7 +217,7 @@ def main():
             slice_max = float(bb[1][slice_index])
 
         if isinstance(x_min, float) and isinstance(x_max, float):
-            plot_left, plot_right = col1.slider(
+            plot_right, plot_left = col1.slider(
                 label="Left and right values for the horizontal axis",
                 min_value=x_min,
                 max_value=x_max,
