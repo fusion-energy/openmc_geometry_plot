@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="1" material="1" region="-1" universe="1" />
+  <cell id="2" material="2" region="-2 1" universe="1" />
+  <surface coeffs="0.0 0.0 50" id="1" type="z-cylinder" />
+  <surface coeffs="0.0 0.0 100" id="2" type="z-cylinder" />
+</geometry>
