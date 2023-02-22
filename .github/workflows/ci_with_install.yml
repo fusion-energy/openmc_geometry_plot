@@ -64,5 +64,5 @@ jobs:
           python plot.py
           cd ../..
 
-          cd examples/dagmc_180_degree_tokamak
+          cd examples/dagmc_tokamak
           python plot.py
