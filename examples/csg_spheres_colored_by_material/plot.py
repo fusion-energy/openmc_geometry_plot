@@ -39,6 +39,7 @@ cell3.fill = mat1
 
 my_geometry = openmc.Geometry([cell1, cell2, cell3])
 
+my_geometry.export_to_xml()
 
 # this part plots the geometry with colors
 
@@ -78,4 +79,4 @@ plt.contour(
     extent=plot_extent,
 )
 
-plt.show()
+plt.savefig('plot.png')

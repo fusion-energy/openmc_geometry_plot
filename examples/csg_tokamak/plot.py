@@ -85,6 +85,7 @@ my_geometry = openmc.Geometry(
     ]
 )
 
+my_geometry.export_to_xml()
 
 # example code for plotting materials of the geometry with an outline
 
@@ -116,4 +117,4 @@ plt.contour(
     extent=plot_extent,
 )
 
-plt.show()
+plt.savefig('plot.png')
