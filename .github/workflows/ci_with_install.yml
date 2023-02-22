@@ -52,7 +52,7 @@ jobs:
           python plot.py
           cd ../..
 
-          cd examples/csg_spheres_colored_by_material.py
+          cd examples/csg_spheres_colored_by_material
           python plot.py
           cd ../..
 
