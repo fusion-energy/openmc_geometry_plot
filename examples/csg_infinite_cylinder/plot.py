@@ -28,6 +28,7 @@ cell_2.fill = material_2
 universe = openmc.Universe(cells=[cell_1, cell_2])
 my_geometry = openmc.Geometry(universe)
 
+my_geometry.export_to_xml()
 
 # example code for plotting materials of the geometry with an outline
 
@@ -70,4 +71,4 @@ plt.contour(
     extent=(plot_left, plot_right, plot_bottom, plot_top),
 )
 
-plt.show()
+plt.savefig('plot.png')

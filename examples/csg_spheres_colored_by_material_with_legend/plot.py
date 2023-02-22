@@ -42,6 +42,9 @@ my_geometry = openmc.Geometry(
     [inner_vessel_cell, first_wall_cell, breeder_blanket_cell]
 )
 
+my_geometry.export_to_xml()
+
+# the plotting example starts here
 
 # these three lines are functionality added by the openmc_geometry_plot
 xlabel, ylabel = my_geometry.get_axis_labels(view_direction="x")
@@ -90,4 +93,4 @@ plt.contour(
     extent=plot_extent,
 )
 
-plt.show()
+plt.savefig('plot.png')

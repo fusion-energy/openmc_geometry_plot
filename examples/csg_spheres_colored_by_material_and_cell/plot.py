@@ -43,6 +43,10 @@ cell3.name = "cell 3"
 
 my_geometry = openmc.Geometry([cell1, cell2, cell3])
 
+my_geometry.export_to_xml()
+
+# the plotting example starts here
+
 fig, (ax1, ax2) = plt.subplots(1, 2)
 
 # these three lines are functionality added by the openmc_geometry_plot
@@ -138,4 +142,4 @@ cell_patches = [
 ax1.legend(handles=mat_patches, bbox_to_anchor=(0.5, -0.55), loc="lower center")
 ax2.legend(handles=cell_patches, bbox_to_anchor=(0.5, -0.55), loc="lower center")
 
-plt.show()
+plt.savefig('plot.png')
