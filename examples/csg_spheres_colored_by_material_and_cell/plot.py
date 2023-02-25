@@ -142,4 +142,4 @@ cell_patches = [
 ax1.legend(handles=mat_patches, bbox_to_anchor=(0.5, -0.55), loc="lower center")
 ax2.legend(handles=cell_patches, bbox_to_anchor=(0.5, -0.55), loc="lower center")
 
-plt.savefig('plot.png')
+plt.savefig("plot.png")

@@ -71,4 +71,4 @@ plt.contour(
     extent=(plot_left, plot_right, plot_bottom, plot_top),
 )
 
-plt.savefig('plot.png')
+plt.savefig("plot.png")

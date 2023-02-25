@@ -117,4 +117,4 @@ plt.contour(
     extent=plot_extent,
 )
 
-plt.savefig('plot.png')
+plt.savefig("plot.png")
