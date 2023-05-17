@@ -299,7 +299,7 @@ def get_slice_of_material_ids(
     my_plots = openmc.Plots([my_plot])
     my_plots.export_to_xml(tmp_folder)
 
-    if 'cross_sections' in openmc.config["cross_sections"].keys():
+    if 'cross_sections' in openmc.config.keys():
         original_cross_sections = openmc.config["cross_sections"]
 
     package_dir = Path(__file__).parent
@@ -307,7 +307,7 @@ def get_slice_of_material_ids(
 
     openmc.plot_geometry(cwd=tmp_folder, output=verbose)
 
-    if 'cross_sections' in openmc.config["cross_sections"] .keys():
+    if 'cross_sections' in openmc.config.keys():
         openmc.config["cross_sections"] = original_cross_sections
 
     if verbose:
