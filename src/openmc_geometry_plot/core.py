@@ -402,7 +402,6 @@ def get_slice_of_cell_ids(
         bb = dag_universe.bounding_box
 
     else:
-
         original_materials = self.get_all_materials()
         mat_ids = original_materials.keys()
 
