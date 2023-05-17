@@ -10,3 +10,4 @@ except PackageNotFoundError:
 __all__ = ["__version__"]
 
 from .core import *
+from .app import *

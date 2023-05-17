@@ -57,7 +57,6 @@ def header():
 
 
 def main():
-    header()
 
     file_label_col1, file_label_col2 = st.columns([1, 1])
     file_label_col1.write(
@@ -553,4 +552,5 @@ def main():
 
 
 if __name__ == "__main__":
+    header()
     main()
