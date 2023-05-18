@@ -478,7 +478,10 @@ def get_slice_of_cell_ids(
     my_plots = openmc.Plots([my_plot])
     my_plots.export_to_xml(tmp_folder)
 
-    original_cross_sections = openmc.config["cross_sections"]
+    if 'cross_sections' in openmc.config.keys():
+        original_cross_sections = openmc.config["cross_sections"]
+    else:
+        original_cross_sections = None
 
     # TODO unset this afterwards
     package_dir = Path(__file__).parent
@@ -486,7 +489,8 @@ def get_slice_of_cell_ids(
 
     openmc.plot_geometry(cwd=tmp_folder, output=verbose)
 
-    openmc.config["cross_sections"] = original_cross_sections
+    if original_cross_sections:
+        openmc.config["cross_sections"] = original_cross_sections
 
     if verbose:
         print(f"Temporary image and xml files written to {tmp_folder}")
