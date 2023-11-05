@@ -81,11 +81,12 @@ def main():
 
     file_col1, file_col2 = st.columns([1, 1])
     geometry_xml_file = file_col1.file_uploader(
-        "Upload your geometry.xml", type=["xml"]
+        "Upload your geometry.xml or model.xml", type=["xml"]
     )
     dagmc_file = file_col2.file_uploader("Upload your DAGMC h5m", type=["h5m"])
 
     my_geometry = None
+
 
     if dagmc_file is None and geometry_xml_file is None:
         new_title = '<center><p style="font-family:sans-serif; color:Red; font-size: 30px;">Upload your geometry.xml or DAGMC h5m file</p></center>'
@@ -179,9 +180,14 @@ def main():
             # adds a single nuclide that is in minimal cross section xml to avoid material failing
             my_mats.append(new_mat)
 
-        my_geometry = openmc.Geometry.from_xml(
-            path=geometry_xml_file.name, materials=my_mats
-        )
+        try:
+            my_geometry = openmc.Geometry.from_xml(
+                path=geometry_xml_file.name, materials=my_mats
+            )
+        except:
+            my_model = openmc.Model.from_model_xml(path=geometry_xml_file.name)
+            my_geometry = my_model.geometry
+
         all_cell_ids = []
         all_cell_names = []
         all_cells = my_geometry.get_all_cells()
@@ -362,6 +368,22 @@ def main():
             and isinstance(plot_top, float)
             and isinstance(plot_bottom, float)
         ):
+            my_geometry.plot(
+                origin=None,
+                width=None,
+                pixels=40000,
+                basis='xy',
+                color_by='cell',
+                colors=None,
+                # seed=None,
+                # openmc_exec='openmc',
+                # axes=None,
+                # legend=False,
+                axis_units='cm',
+                # legend_kwargs=_default_legend_kwargs,
+                # outline=outline,
+                # **kwargs
+            )
             if color_by == "cells":
                 color_data_slice = my_geometry.get_slice_of_cell_ids(
                     view_direction=view_direction,
