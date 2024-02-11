@@ -127,19 +127,19 @@ def get_mid_slice_value(self, view_direction, bounding_box=None):
     return plot_edge
 
 
-def get_axis_labels(self, view_direction):
+def get_axis_labels(self, view_direction, axis_units):
     """Returns two axis label values for the x and y value. Takes
     view_direction into account."""
 
     if view_direction == "x":
-        xlabel = "Y [cm]"
-        ylabel = "Z [cm]"
+        xlabel = f"Y [{axis_units}]"
+        ylabel = f"Z [{axis_units}]"
     if view_direction == "y":
-        xlabel = "X [cm]"
-        ylabel = "Z [cm]"
+        xlabel = f"X [{axis_units}]"
+        ylabel = f"Z [{axis_units}]"
     if view_direction == "z":
-        xlabel = "X [cm]"
-        ylabel = "Y [cm]"
+        xlabel = f"X [{axis_units}]"
+        ylabel = f"Y [{axis_units}]"
     return xlabel, ylabel
 
 

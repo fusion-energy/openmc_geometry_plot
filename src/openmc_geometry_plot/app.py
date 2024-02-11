@@ -182,24 +182,24 @@ def main():
         my_geometry = openmc.Geometry.from_xml(
             path=geometry_xml_file.name, materials=my_mats
         )
-        all_cell_ids = []
-        all_cell_names = []
+        # all_cell_ids = []
+        # all_cell_names = []
         all_cells = my_geometry.get_all_cells()
-        for cell_id, cell in all_cells.items():
-            all_cell_ids.append(cell.id)
-            all_cell_names.append(cell.name)
-        set_cell_ids = set(all_cell_ids)
-        set_cell_names = set(all_cell_names)
+        # for cell_id, cell in all_cells.items():
+        #     all_cell_ids.append(cell.id)
+        #     all_cell_names.append(cell.name)
+        # set_cell_ids = set(all_cell_ids)
+        # set_cell_names = set(all_cell_names)
 
     if my_geometry:
         print("geometry is set to something so attempting to plot")
         bb = my_geometry.bounding_box
 
-        view_direction = st.sidebar.selectbox(
-            label="View direction",
-            options=("z", "x", "y"),
+        basis = st.sidebar.selectbox(
+            label="basis",
+            options=("xy", "xz", "yz"),
             index=0,
-            key="geometry_view_direction",
+            key="basis",
             help="Setting the direction of view automatically sets the horizontal and vertical axis used for the plot.",
         )
         backend = st.sidebar.selectbox(
@@ -216,21 +216,35 @@ def main():
             key="outline",
             help="Allows an outline to be drawn around the cells or materials, select None for no outline",
         )
-        color_by = st.sidebar.selectbox(
-            label="Color by",
-            options=("materials", "cells"),
+        legend = st.sidebar.selectbox(
+            label="Outline",
+            options=(True, False),
             index=0,
-            key="color_by",
-            help="Should the plot be colored by material or by cell",
+            key="legend",
+            help="Allows a plot legend to be added",
         )
+        axis_units = st.sidebar.selectbox(
+            label="Axis units",
+            options=('km', 'm', 'cm', 'mm'),
+            index=3,
+            key="axis_units",
+            help="Select the units used on the X and Y axis",
+        )
+        pixels = st.sidebar.number_input(
+            label="Number of pixels",
+            value=40000,
+            help="Increasing this value increases the image resolution but also requires longer to create the image",
+        )
+
         plot_left, plot_right = None, None
         plot_bottom, plot_top = None, None
         x_min, x_max = None, None
         y_min, y_max = None, None
 
-        x_index = {"z": 0, "y": 0, "x": 1}[view_direction]
-        y_index = {"z": 1, "y": 2, "x": 2}[view_direction]
-        slice_index = {"z": 2, "y": 1, "x": 0}[view_direction]
+        x_index = {'x':0,'y':1,'z':2}[basis[0]]
+        y_index = {'x':0,'y':1,'z':2}[basis[1]]
+        slice_index = {"xy": 2, "xz": 1, "yz": 0}[basis]
+        slice_axis = {"xy": 'Z', "xz": 'Y', "yz": 'X'}[basis]
 
         if np.isinf(bb[0][x_index]) or np.isinf(bb[1][x_index]):
             x_min = st.sidebar.number_input(
@@ -296,10 +310,12 @@ def main():
                 help="Set the value of the slice axis",
             )
 
-        pixels_across = st.sidebar.number_input(
-            label="Number of horizontal pixels",
-            value=500,
-            help="Increasing this value increases the image resolution but also requires longer to create the image",
+        color_by = st.sidebar.selectbox(
+            label="Color by",
+            options=("materials", "cells"),
+            index=0,
+            key="color_by",
+            help="Should the plot be colored by material or by cell",
         )
 
         selected_color_map = st.sidebar.selectbox(
@@ -328,32 +344,37 @@ def main():
                 my_colors[id] = RGB
 
         elif color_by == "cells":
-            cmap = cm.get_cmap(selected_color_map, len(set_cell_ids))
+            cmap = cm.get_cmap(selected_color_map, len(all_cells))
             initial_hex_color = []
             for i in range(cmap.N):
                 rgba = cmap(i)
                 # rgb2hex accepts rgb or rgba
                 initial_hex_color.append(colors.rgb2hex(rgba))
 
-            for c, (cell_id, cell_name) in enumerate(zip(set_cell_ids, all_cell_names)):
-                if cell_name in ["", None]:
-                    cell_name = "not set"
+            for c, cell in enumerate(all_cells.values()):
+                if cell.name in ["", None]:
+                    desc = f"Color of cell id {cell.id}"
+                else:
+                    desc = f"Color of cell id {cell.id}, cell name {cell.name}"
+
                 st.sidebar.color_picker(
-                    f"Color of cell id {cell_id}, cell name {cell_name}",
-                    key=f"cell_{cell_id}",
+                    desc,
+                    key=f"cell_{cell.id}",
                     value=initial_hex_color[c],
                 )
 
-            my_colors = {0: (1, 1, 1)}  # adding entry for void cells
-            for id in set_cell_ids:
+            my_colors = {}  # adding entry for void cells
+            for id, value in all_cells.items():
                 hex_color = st.session_state[f"cell_{id}"].lstrip("#")
-                RGB = tuple(int(hex_color[i : i + 2], 16) / 255 for i in (0, 2, 4))
-                my_colors[id] = RGB
+                RGB = tuple(int(hex_color[i : i + 2], 16)  for i in (0, 2, 4))
+                print('RGB',RGB)
+                my_colors[value] =  RGB
 
+        print(my_colors)
         title = st.sidebar.text_input(
             "Plot title",
             help="Optionally set your own title for the plot",
-            value=f"Slice through OpenMC geometry with view direction {view_direction}",
+            value=f"Slice through OpenMC geometry at {slice_axis}={slice_value}",
         )
 
         if (
@@ -362,109 +383,31 @@ def main():
             and isinstance(plot_top, float)
             and isinstance(plot_bottom, float)
         ):
-            if color_by == "cells":
-                color_data_slice = my_geometry.get_slice_of_cell_ids(
-                    view_direction=view_direction,
-                    plot_left=plot_left,
-                    plot_right=plot_right,
-                    plot_top=plot_top,
-                    plot_bottom=plot_bottom,
-                    pixels_across=pixels_across,
-                    slice_value=slice_value,
-                )
-            elif color_by == "materials":
-                color_data_slice = my_geometry.get_slice_of_material_ids(
-                    view_direction=view_direction,
-                    plot_left=plot_left,
-                    plot_right=plot_right,
-                    plot_top=plot_top,
-                    plot_bottom=plot_bottom,
-                    pixels_across=pixels_across,
-                    slice_value=slice_value,
-                )
-
-            (xlabel, ylabel) = my_geometry.get_axis_labels(
-                view_direction=view_direction
-            )
-            if outline is not None:
-                # gets unique levels for outlines contour plot
-                # this can be avoided if outline is the same as the color data
-                if outline == color_by:
-                    outline_data_slice = color_data_slice
-                elif outline == "cells":
-                    outline_data_slice = my_geometry.get_slice_of_cell_ids(
-                        view_direction=view_direction,
-                        plot_left=plot_left,
-                        plot_right=plot_right,
-                        plot_top=plot_top,
-                        plot_bottom=plot_bottom,
-                        pixels_across=pixels_across,
-                        slice_value=slice_value,
-                    )
-                elif outline == "materials":
-                    outline_data_slice = my_geometry.get_slice_of_material_ids(
-                        view_direction=view_direction,
-                        plot_left=plot_left,
-                        plot_right=plot_right,
-                        plot_top=plot_top,
-                        plot_bottom=plot_bottom,
-                        pixels_across=pixels_across,
-                        slice_value=slice_value,
-                    )
-                else:
-                    raise ValueError(
-                        f"outline can only be cells or materials, not {outline}"
-                    )
 
             if backend == "matplotlib":
-                extent = my_geometry.get_plot_extent(
-                    plot_left,
-                    plot_right,
-                    plot_bottom,
-                    plot_top,
-                    slice_value,
-                    bb,
-                    view_direction,
-                )[
-                    :-1
-                ]  # slice value is returned in the function so removing with -1
 
-                bounds = list(my_colors.keys())
-                color_values = list(my_colors.values())
+                origin=(
+                    (plot_left+plot_right)/2,
+                    (plot_top+plot_bottom)/2,
+                    (slice_value)
+                )
+                width_x=plot_left-plot_right
+                width_y=plot_top-plot_bottom
+                print('origin',origin)
 
-                mat_cmap = colors.ListedColormap(color_values)
-                # our material ids are set to be 1 and 2. void space is 0
-                # this +1 is needed as the bounds must be larger that the value to include the values
-                bounds.append(bounds[-1] + 1)
-
-                mat_norm = colors.BoundaryNorm(bounds, mat_cmap.N)
-
-                plt.imshow(
-                    color_data_slice,
-                    extent=extent,
-                    interpolation="none",
-                    norm=mat_norm,  # needed for colors
-                    cmap=mat_cmap,  # needed for colors
+                plot = my_geometry.plot(
+                    origin=origin,
+                    width=[width_x,width_y],
+                    pixels=pixels,
+                    basis='xy',
+                    color_by='cell',
+                    colors=my_colors,
+                    legend=legend,
+                    axis_units=axis_units,
+                    outline=outline,
                 )
 
-                plt.xlabel(xlabel)
-                plt.ylabel(ylabel)
                 plt.title(title)
-
-                if outline is not None:
-                    levels = np.unique(
-                        [item for sublist in outline_data_slice for item in sublist]
-                    )
-                    plt.contour(
-                        outline_data_slice,
-                        origin="upper",
-                        colors="k",
-                        linestyles="solid",
-                        levels=levels,
-                        linewidths=0.5,
-                        extent=extent,
-                    )
-
                 plt.savefig("openmc_plot_geometry_image.png")
                 st.pyplot(plt)
                 # st.image("openmc_plot_geometry_image.png", use_column_width="always")
@@ -543,10 +486,11 @@ def main():
                 st.plotly_chart(plot, use_container_width=True)
 
             st.write("Model info")
+            st.write(f"origin {origin}")
             st.write(f"Material IDS found {set_mat_ids}")
             st.write(f"Material names found {set_mat_names}")
-            st.write(f"Cell IDS found {set_cell_ids}")
-            st.write(f"Cell names found {set_cell_names}")
+            st.write(f"Cell IDS found {all_cells.keys()}")
+            # st.write(f"Cell names found {all_cells.}")
             st.write(f"Bounding box lower left x={bb[0][0]} y={bb[0][1]} z={bb[0][2]}")
             st.write(f"Bounding box upper right x={bb[1][0]} y={bb[1][1]} z={bb[1][2]}")
 
