@@ -357,11 +357,24 @@ def main():
 
             if backend == "matplotlib":
 
-                origin=(
-                    (plot_left+plot_right)/2,
-                    (plot_top+plot_bottom)/2,
-                    (slice_value)
-                )
+                if basis == 'xy':
+                    origin=(
+                        (plot_left+plot_right)/2,
+                        (plot_top+plot_bottom)/2,
+                        slice_value,
+                    )
+                elif basis == 'yz':
+                    origin=(
+                        slice_value,
+                        (plot_left+plot_right)/2,
+                        (plot_top+plot_bottom)/2,
+                    )
+                elif basis == 'xz':
+                    origin=(
+                        (plot_left+plot_right)/2,
+                        slice_value,
+                        (plot_top+plot_bottom)/2,
+                    )
                 width_x=plot_left-plot_right
                 width_y=plot_top-plot_bottom
                 print('origin',origin)
