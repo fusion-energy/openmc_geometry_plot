@@ -36,23 +36,6 @@ def header():
                 """
     st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-    st.write(
-        """
-            # OpenMC geometry plot
-
-            ### ⚛ A geometry plotting user interface for OpenMC.
-
-            🐍 Run this app locally with Python ```pip install openmc_geometry_plot``` then run with ```openmc_geometry_plot```
-
-            ⚙ Produce MatPlotLib or Plotly plots in batch with the 🐍 [Python API](https://github.com/fusion-energy/openmc_geometry_plot/tree/master/examples)
-
-            💾 Raise a feature request, report and issue or make a contribution on [GitHub](https://github.com/fusion-energy/openmc_geometry_plot)
-
-            📧 Email feedback to mail@jshimwell.com
-
-            🔗 This package forms part of a more [comprehensive openmc plotting](https://github.com/fusion-energy/openmc_plot) package where geometry, tallies, slices, etc can be plotted and is hosted on [xsplot.com](https://www.xsplot.com/) .
-        """
-    )
     st.write("<br>", unsafe_allow_html=True)
 
 
@@ -71,7 +54,7 @@ def main():
     )
     file_label_col2.write(
         """
-            👉 Create your DAGMC h5m file using tools like [CAD-to-h5m](https://github.com/fusion-energy/cad_to_dagmc), [STL-to_h5m](https://github.com/fusion-energy/stl_to_h5m) [vertices-to-h5m](https://github.com/fusion-energy/vertices_to_h5m), [Brep-to-h5m](https://github.com/fusion-energy/brep_to_h5m) or the [Cubit](https://coreform.com/products/coreform-cubit/) [Plugin](https://github.com/svalinn/Cubit-plugin)
+            👉 Create your DAGMC h5m file using tools like [CAD-to-h5m](https://github.com/fusion-energy/cad_to_dagmc)
             
             Not got a DAGMC h5m file handy, right mouse 🖱️ click and save these links 
             [ example 1 ](https://fusion-energy.github.io/openmc_geometry_plot/examples/dagmc_tokamak/dagmc_180_tokamak.h5m)
@@ -114,11 +97,7 @@ def main():
         else:
             set_mat_ids = ()
 
-        # set_cell_ids = set(di.get_volumes_from_h5m(dagmc_file.name))
-        set_cell_ids = list(range(1, dag_universe.n_cells + 1))
         set_mat_names = set(dag_universe.material_names)
-        all_cell_names = set_cell_ids
-        set_cell_names = set(all_cell_names)
 
     elif dagmc_file is not None and geometry_xml_file is None:
         save_uploadedfile(dagmc_file)
@@ -139,11 +118,7 @@ def main():
         else:
             set_mat_ids = ()
 
-        # set_cell_ids = set(di.get_volumes_from_h5m(dagmc_file.name))
-        set_cell_ids = list(range(1, dag_universe.n_cells + 1))
         set_mat_names = set(dag_universe.material_names)
-        all_cell_names = set_cell_ids
-        set_cell_names = set(all_cell_names)
 
     # CSG route
     elif dagmc_file is None and geometry_xml_file is not None:
@@ -159,7 +134,7 @@ def main():
         for cell in all_cells:
             if "material" in cell.keys():
                 if cell.get("material") == "void":
-                    mat_ids.append(0)
+                    pass
                     print(f"material for cell {cell} is void")
                 else:
                     mat_ids.append(int(cell.get("material")))
@@ -199,7 +174,7 @@ def main():
             label="Ploting backend",
             options=("matplotlib", "plotly"),
             index=0,
-            key="geometry_ploting_backend",
+            key="geometry_plotting_backend",
             help="Create png images with MatPlotLib or HTML plots with Plotly",
         )
         outline = st.sidebar.selectbox(
@@ -210,7 +185,7 @@ def main():
             help="Allows an outline to be drawn around the cells or materials, select None for no outline",
         )
         legend = st.sidebar.selectbox(
-            label="Outline",
+            label="Legend",
             options=(True, False),
             index=0,
             key="legend",
@@ -219,13 +194,13 @@ def main():
         axis_units = st.sidebar.selectbox(
             label="Axis units",
             options=('km', 'm', 'cm', 'mm'),
-            index=3,
+            index=2,
             key="axis_units",
             help="Select the units used on the X and Y axis",
         )
         pixels = st.sidebar.number_input(
             label="Number of pixels",
-            value=40000,
+            value=200000,
             help="Increasing this value increases the image resolution but also requires longer to create the image",
         )
 
@@ -305,7 +280,7 @@ def main():
 
         color_by = st.sidebar.selectbox(
             label="Color by",
-            options=("materials", "cells"),
+            options=("cell", "material"),
             index=0,
             key="color_by",
             help="Should the plot be colored by material or by cell",
@@ -315,7 +290,7 @@ def main():
             label="Color map", options=colormaps(), index=82
         )  # index 82 is tab20c
 
-        if color_by == "materials":
+        if color_by == "material":
             cmap = cm.get_cmap(selected_color_map, len(set_mat_ids))
             initial_hex_color = []
             for i in range(cmap.N):
@@ -332,11 +307,14 @@ def main():
 
             my_colors = {}
             for id in set_mat_ids:
+                print('id from set_mat_ids', id)
                 hex_color = st.session_state[f"mat_{id}"].lstrip("#")
-                RGB = tuple(int(hex_color[i : i + 2], 16) / 255 for i in (0, 2, 4))
-                my_colors[id] = RGB
+                RGB = tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
+                print('RGB',RGB)
+                mat = my_geometry.get_all_materials()[id]
+                my_colors[mat] = RGB
 
-        elif color_by == "cells":
+        elif color_by == "cell":
             cmap = cm.get_cmap(selected_color_map, len(all_cells))
             initial_hex_color = []
             for i in range(cmap.N):
@@ -392,8 +370,8 @@ def main():
                     origin=origin,
                     width=[width_x,width_y],
                     pixels=pixels,
-                    basis='xy',
-                    color_by='cell',
+                    basis=basis,
+                    color_by=color_by,
                     colors=my_colors,
                     legend=legend,
                     axis_units=axis_units,
