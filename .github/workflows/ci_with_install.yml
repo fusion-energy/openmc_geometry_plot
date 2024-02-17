@@ -20,7 +20,7 @@ jobs:
   testing:
     runs-on: ubuntu-latest
     container:
-      image: continuumio/miniconda3:23.10.0-1
+      image: openmc:latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
