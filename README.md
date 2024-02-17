@@ -28,10 +28,6 @@ pip install openmc_geometry_plot
 
 The package can be used from within your own python script to make plots or via a GUI that is also bundled into the package install.
 
-## Python API script usage
-
-See the [examples folder](https://github.com/fusion-energy/openmc_geometry_plot/tree/master/examples) for example scripts
-
 ## Graphical User Interface (GUI) usage
 
 After installing run the ```openmc_geometry_plot``` command from the terminal and the GUI should launch in a new browser window.

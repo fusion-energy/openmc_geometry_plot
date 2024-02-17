@@ -20,14 +20,10 @@ jobs:
   testing:
     runs-on: ubuntu-latest
     container:
-      image: continuumio/miniconda3:4.12.0
+      image: openmc/openmc:latest-dagmc
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-
-      - name: install package
-        run: |
-          conda install -c conda-forge openmc
 
       - name: install package with tests
         run: |
@@ -37,32 +33,3 @@ jobs:
         run: |
           cd tests
           pytest -v
-
-      - name: Run examples
-        run: |
-          cd examples/csg_cylinder_box
-          python plot.py
-          cd ../..
-
-          cd examples/csg_infinite_cylinder
-          python plot.py
-          cd ../..
-
-          cd examples/csg_spheres_colored_by_material_and_cell
-          python plot.py
-          cd ../..
-
-          cd examples/csg_spheres_colored_by_material
-          python plot.py
-          cd ../..
-
-          cd examples/csg_spheres_colored_by_material_with_legend
-          python plot.py
-          cd ../..
-
-          cd examples/csg_tokamak
-          python plot.py
-          cd ../..
-
-          cd examples/dagmc_tokamak
-          python plot.py
