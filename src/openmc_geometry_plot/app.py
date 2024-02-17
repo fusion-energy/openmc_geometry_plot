@@ -182,14 +182,7 @@ def main():
         my_geometry = openmc.Geometry.from_xml(
             path=geometry_xml_file.name, materials=my_mats
         )
-        # all_cell_ids = []
-        # all_cell_names = []
         all_cells = my_geometry.get_all_cells()
-        # for cell_id, cell in all_cells.items():
-        #     all_cell_ids.append(cell.id)
-        #     all_cell_names.append(cell.name)
-        # set_cell_ids = set(all_cell_ids)
-        # set_cell_names = set(all_cell_names)
 
     if my_geometry:
         print("geometry is set to something so attempting to plot")
