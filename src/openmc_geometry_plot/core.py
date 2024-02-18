@@ -7,9 +7,12 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import math
 from tempfile import TemporaryDirectory
-
+import warnings
 from PIL import Image
-
+import matplotlib.image as mpimg
+# import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 from numpy import asarray
 
 
@@ -25,6 +28,9 @@ def get_int_from_rgb(rgb: typing.Tuple[int, int, int]) -> int:
     green = rgb[1]
     blue = rgb[2]
     return (red << 16) + (green << 8) + blue
+
+def get_hover_text_from_id(id, color_by):
+    return f'{color_by} {id}'
 
 
 def get_plot_extent(
@@ -540,6 +546,7 @@ def plot_plotly(
     axis_units='cm',
     # legend_kwargs=_default_legend_kwargs,
     outline=False,
+    title='',
     **kwargs
 ):
         """Display a slice plot of the universe.
@@ -609,10 +616,7 @@ def plot_plotly(
             Axes containing resulting image
 
         """
-        import matplotlib.image as mpimg
-        # import matplotlib.patches as mpatches
-        import matplotlib.pyplot as plt
-        import plotly.graph_objects as go
+
 
         # Determine extents of plot
         if basis == 'xy':
@@ -643,7 +647,7 @@ def plot_plotly(
                 bb_width = bb.width
                 x_width = bb_width['xyz'.index(basis[0])]
                 y_width = bb_width['xyz'.index(basis[1])]
-                width = (x_width, y_width)
+                width = (x_width+3, y_width+3) # makes width a bit bigger so that the edges don't get cut
 
         if isinstance(pixels, int):
             aspect_ratio = width[0] / width[1]
@@ -709,14 +713,9 @@ def plot_plotly(
             data = []
 
             if outline:
-                # Combine R, G, B values into a single int
-                rgb = (img * 256).astype(int)
-                image_value = (rgb[..., 0] << 16) + \
-                    (rgb[..., 1] << 8) + (rgb[..., 2])
-
                 data.append(
                     go.Contour(
-                        z=image_value,
+                        z=image_values,
                         contours_coloring='none',
                         # colorscale=dcolorsc,
                         showscale=False,
@@ -737,6 +736,20 @@ def plot_plotly(
             for rgb_col, mat_id in zip(rgb_cols, mat_ids):
                 dcolorsc.append(((1/highest_mat_id)*mat_id,rgb_col))
 
+            cbar = dict(
+                        tick0= 0,
+                        xref="container",
+                        tickmode= 'array',
+                        tickvals= mat_ids,
+                        ticktext= mat_ids, # TODO add material names
+                        title=f'{color_by.title()} IDs',
+                    )
+
+            hovertext = [
+                [get_hover_text_from_id(inner_entry, color_by) for inner_entry in outer_entry]
+                for outer_entry in image_values
+            ]
+
             data.append(
                 go.Heatmap(
                     z=image_values,
@@ -746,17 +759,14 @@ def plot_plotly(
                     dx=abs(x_min - x_max) / (img.shape[0] - 1),
                     y0=y_min,
                     dy=abs(y_min - y_max) / (img.shape[1] - 1),
-                    colorbar= dict(
-                        tick0= 0,
-                        xref="container",
-                        tickmode= 'array',
-                        tickvals= mat_ids,
-                        ticktext= mat_ids, # TODO add material names
-                        title=f'{color_by.title()} IDs'
-                    )
+                    colorbar= cbar,
+                    showscale=legend,
+                    hoverinfo='text',
+                    text=hovertext
                 )
             )
             plot = go.Figure(data=data)
+           
 
             plot.update_layout(
                 xaxis={"title": xlabel},
@@ -765,6 +775,7 @@ def plot_plotly(
                 # title=title,
                 autosize=False,
                 height=800,
+                title=title
             )
             plot.update_yaxes(
                 scaleanchor="x",

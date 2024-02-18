@@ -47,8 +47,8 @@ def main():
             👉 Create your ```openmc.Geometry()``` and export the geometry xml file using ```export_to_xml()```.
 
             Not got a geometry.xml file handy, right mouse 🖱️ click and save these links 
-            [ example 1 ](https://fusion-energy.github.io/openmc_geometry_plot/examples/csg_tokamak/geometry.xml),
-            [ example 2 ](https://fusion-energy.github.io/openmc_geometry_plot/examples/csg_cylinder_box/geometry.xml)
+            [ example 1 ](https://raw.githubusercontent.com/fusion-energy/openmc_geometry_plot/31be0556f3f34c102cab3de094df08f48acad5ca/examples/csg_tokamak/geometry.xml),
+            [ example 2 ](https://raw.githubusercontent.com/fusion-energy/openmc_geometry_plot/31be0556f3f34c102cab3de094df08f48acad5ca/examples/csg_cylinder_box/geometry.xml)
 
         """
     )
@@ -57,7 +57,7 @@ def main():
             👉 Create your DAGMC h5m file using tools like [CAD-to-h5m](https://github.com/fusion-energy/cad_to_dagmc)
             
             Not got a DAGMC h5m file handy, right mouse 🖱️ click and save these links 
-            [ example 1 ](https://fusion-energy.github.io/openmc_geometry_plot/examples/dagmc_tokamak/dagmc_180_tokamak.h5m)
+            [ example 1 ](https://github.com/fusion-energy/openmc_geometry_plot/raw/31be0556f3f34c102cab3de094df08f48acad5ca/examples/dagmc_tokamak/dagmc_180_tokamak.h5m)
 
         """
     )
@@ -91,6 +91,10 @@ def main():
 
         mat_ids = range(0, len(dag_universe.material_names) + 1)
         # mat_names = dag_universe.material_names
+        all_cells_ids = range(0, dag_universe.n_cells + 1)
+        all_cells ={}
+        for cell_id in all_cells_ids:
+            all_cells[cell_id] =openmc.Cell(cell_id=cell_id)
 
         if len(mat_ids) >= 1:
             set_mat_ids = set(mat_ids)
@@ -112,6 +116,11 @@ def main():
 
         # find all material names
         mat_ids = range(0, len(dag_universe.material_names) + 1)
+
+        all_cells_ids = range(0, dag_universe.n_cells + 1)
+        all_cells ={}
+        for cell_id in all_cells_ids:
+            all_cells[cell_id] =openmc.Cell(cell_id=cell_id)
 
         if len(mat_ids) >= 1:
             set_mat_ids = set(mat_ids)
@@ -172,17 +181,10 @@ def main():
         )
         backend = st.sidebar.selectbox(
             label="Ploting backend",
-            options=("matplotlib", "plotly"),
+            options=("plotly", "matplotlib"),
             index=0,
             key="geometry_plotting_backend",
             help="Create png images with MatPlotLib or HTML plots with Plotly",
-        )
-        outline = st.sidebar.selectbox(
-            label="Outline",
-            options=("materials", "cells", None),
-            index=0,
-            key="outline",
-            help="Allows an outline to be drawn around the cells or materials, select None for no outline",
         )
         legend = st.sidebar.selectbox(
             label="Legend",
@@ -249,6 +251,15 @@ def main():
             slice_min = float(bb[0][slice_index])
             slice_max = float(bb[1][slice_index])
 
+        if isinstance(slice_min, float) and isinstance(slice_max, float):
+            slice_value = st.sidebar.slider(
+                label="Slice value",
+                min_value=slice_min,
+                max_value=slice_max,
+                value=(slice_min + slice_max) / 2,
+                key="slice_slider",
+                help="Set the value of the slice axis",
+            )
         if isinstance(x_min, float) and isinstance(x_max, float):
             plot_right, plot_left = st.sidebar.slider(
                 label="Left and right values for the horizontal axis",
@@ -268,15 +279,6 @@ def main():
                 key="bottom_top_slider",
                 help="Set the lowest visible value and highest visible value on the vertical axis",
             )
-        if isinstance(slice_min, float) and isinstance(slice_max, float):
-            slice_value = st.sidebar.slider(
-                label="Slice value",
-                min_value=slice_min,
-                max_value=slice_max,
-                value=(slice_min + slice_max) / 2,
-                key="slice_slider",
-                help="Set the value of the slice axis",
-            )
 
         color_by = st.sidebar.selectbox(
             label="Color by",
@@ -285,7 +287,13 @@ def main():
             key="color_by",
             help="Should the plot be colored by material or by cell",
         )
-
+        outline = st.sidebar.selectbox(
+            label="Outline",
+            options=(True, False),
+            index=0,
+            key="outline",
+            help="Allows an outline to be drawn around the cells or materials, select None for no outline",
+        )
         selected_color_map = st.sidebar.selectbox(
             label="Color map", options=colormaps(), index=82
         )  # index 82 is tab20c
@@ -415,7 +423,8 @@ def main():
                     colors=my_colors,
                     legend=legend,
                     axis_units=axis_units,
-                    outline=outline,               
+                    outline=outline,      
+                    title=title         
                 )
 
                 plot.write_html("openmc_plot_geometry_image.html")
