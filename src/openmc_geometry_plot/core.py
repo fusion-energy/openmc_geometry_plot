@@ -5,9 +5,14 @@ import typing
 from tempfile import mkdtemp
 from pathlib import Path
 import matplotlib.pyplot as plt
-
+import math
+from tempfile import TemporaryDirectory
+import warnings
 from PIL import Image
-
+import matplotlib.image as mpimg
+# import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 from numpy import asarray
 
 
@@ -23,6 +28,9 @@ def get_int_from_rgb(rgb: typing.Tuple[int, int, int]) -> int:
     green = rgb[1]
     blue = rgb[2]
     return (red << 16) + (green << 8) + blue
+
+def get_hover_text_from_id(id, color_by):
+    return f'{color_by} {id}'
 
 
 def get_plot_extent(
@@ -522,6 +530,258 @@ def get_slice_of_cell_ids(
 
     return trimmed_image_value
 
+
+def plot_plotly(
+    geometry,
+    origin=None,
+    width=None,
+    pixels=40000,
+    basis='xy',
+    color_by='cell',
+    colors=None,
+    seed=None,
+    openmc_exec='openmc',
+    axes=None,
+    legend=False,
+    axis_units='cm',
+    # legend_kwargs=_default_legend_kwargs,
+    outline=False,
+    title='',
+    **kwargs
+):
+        """Display a slice plot of the universe.
+
+        Parameters
+        ----------
+        origin : iterable of float
+            Coordinates at the origin of the plot. If left as None,
+            universe.bounding_box.center will be used to attempt to ascertain
+            the origin with infinite values being replaced by 0.
+        width : iterable of float
+            Width of the plot in each basis direction. If left as none then the
+            universe.bounding_box.width() will be used to attempt to
+            ascertain the plot width.  Defaults to (10, 10) if the bounding_box
+            contains inf values
+        pixels : Iterable of int or int
+            If iterable of ints provided then this directly sets the number of
+            pixels to use in each basis direction. If int provided then this
+            sets the total number of pixels in the plot and the number of
+            pixels in each basis direction is calculated from this total and
+            the image aspect ratio.
+        basis : {'xy', 'xz', 'yz'}
+            The basis directions for the plot
+        color_by : {'cell', 'material'}
+            Indicate whether the plot should be colored by cell or by material
+        colors : dict
+            Assigns colors to specific materials or cells. Keys are instances of
+            :class:`Cell` or :class:`Material` and values are RGB 3-tuples, RGBA
+            4-tuples, or strings indicating SVG color names. Red, green, blue,
+            and alpha should all be floats in the range [0.0, 1.0], for example:
+
+            .. code-block:: python
+
+               # Make water blue
+               water = openmc.Cell(fill=h2o)
+               universe.plot(..., colors={water: (0., 0., 1.))
+        seed : int
+            Seed for the random number generator
+        openmc_exec : str
+            Path to OpenMC executable.
+        axes : matplotlib.Axes
+            Axes to draw to
+
+            .. versionadded:: 0.13.1
+        legend : bool
+            Whether a legend showing material or cell names should be drawn
+
+            .. versionadded:: 0.14.0
+        legend_kwargs : dict
+            Keyword arguments passed to :func:`matplotlib.pyplot.legend`.
+
+            .. versionadded:: 0.14.0
+        outline : bool
+            Whether outlines between color boundaries should be drawn
+
+            .. versionadded:: 0.14.0
+        axis_units : {'km', 'm', 'cm', 'mm'}
+            Units used on the plot axis
+
+            .. versionadded:: 0.14.0
+        **kwargs
+            Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+            Axes containing resulting image
+
+        """
+
+
+        # Determine extents of plot
+        if basis == 'xy':
+            x, y = 0, 1
+            xlabel, ylabel = f'x [{axis_units}]', f'y [{axis_units}]'
+        elif basis == 'yz':
+            x, y = 1, 2
+            xlabel, ylabel = f'y [{axis_units}]', f'z [{axis_units}]'
+        elif basis == 'xz':
+            x, y = 0, 2
+            xlabel, ylabel = f'x [{axis_units}]', f'z [{axis_units}]'
+
+        bb = geometry.bounding_box
+        # checks to see if bounding box contains -inf or inf values
+        if np.isinf(bb.extent[basis]).any():
+            if origin is None:
+                origin = (0, 0, 0)
+            if width is None:
+                width = (10, 10)
+        else:
+            if origin is None:
+                # if nan values in the bb.center they get replaced with 0.0
+                # this happens when the bounding_box contains inf values
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", RuntimeWarning)
+                    origin = np.nan_to_num(bb.center)
+            if width is None:
+                bb_width = bb.width
+                x_width = bb_width['xyz'.index(basis[0])]
+                y_width = bb_width['xyz'.index(basis[1])]
+                width = (x_width+3, y_width+3) # makes width a bit bigger so that the edges don't get cut
+
+        if isinstance(pixels, int):
+            aspect_ratio = width[0] / width[1]
+            pixels_y = math.sqrt(pixels / aspect_ratio)
+            pixels = (int(pixels / pixels_y), int(pixels_y))
+
+        axis_scaling_factor = {'km': 0.00001, 'm': 0.01, 'cm': 1, 'mm': 10}
+
+        x_min = (origin[x] - 0.5*width[0]) * axis_scaling_factor[axis_units]
+        x_max = (origin[x] + 0.5*width[0]) * axis_scaling_factor[axis_units]
+        y_min = (origin[y] - 0.5*width[1]) * axis_scaling_factor[axis_units]
+        y_max = (origin[y] + 0.5*width[1]) * axis_scaling_factor[axis_units]
+
+        with TemporaryDirectory() as tmpdir:
+            model = openmc.Model()
+            model.geometry = geometry
+            if seed is not None:
+                model.settings.plot_seed = seed
+
+            # Determine whether any materials contains macroscopic data and if
+            # so, set energy mode accordingly
+            for mat in geometry.get_all_materials().values():
+                if mat._macroscopic is not None:
+                    model.settings.energy_mode = 'multi-group'
+                    break
+
+            # Create plot object matching passed arguments
+            plot = openmc.Plot()
+            plot.origin = origin
+            plot.width = width
+            plot.pixels = pixels
+            plot.basis = basis
+            plot.color_by = color_by
+
+            if colors is not None:
+                
+                colors_based_on_ids = {}
+                for key, value in colors.items():
+                    colors_based_on_ids[key] = get_rgb_from_int(key.id)
+                plot.colors = colors_based_on_ids
+
+            model.plots.append(plot)
+
+            # Run OpenMC in geometry plotting mode
+            model.plot_geometry(False, cwd=tmpdir, openmc_exec=openmc_exec)
+
+            # Read image from file
+            img_path = Path(tmpdir) / f'plot_{plot.id}.png'
+            if not img_path.is_file():
+                img_path = img_path.with_suffix('.ppm')
+            # todo see if we can just read in image once
+            img = mpimg.imread(str(img_path))
+            image_values = Image.open(img_path)
+            image_values = np.asarray(image_values)
+            image_values = [
+                [get_int_from_rgb(inner_entry) for inner_entry in outer_entry]
+                for outer_entry in image_values
+            ]
+
+            image_values = np.array(image_values)
+            image_values[image_values == 16777215] = 0
+
+            data = []
+
+            if outline:
+                data.append(
+                    go.Contour(
+                        z=image_values,
+                        contours_coloring='none',
+                        # colorscale=dcolorsc,
+                        showscale=False,
+                        x0=x_min,
+                        dx=abs(x_min - x_max) / (img.shape[0] - 1),
+                        y0=y_min,
+                        dy=abs(y_min - y_max) / (img.shape[1] - 1),
+                    )
+                )
+            
+            dcolorsc=[
+                [0, 'white'],
+            ]
+
+            rgb_cols = [f'rgb({c[0]},{c[1]},{c[2]})' for c in list(colors.values())]
+            mat_ids=[mat.id for mat in colors.keys()]
+            highest_mat_id = max(mat_ids)
+            for rgb_col, mat_id in zip(rgb_cols, mat_ids):
+                dcolorsc.append(((1/highest_mat_id)*mat_id,rgb_col))
+
+            cbar = dict(
+                        tick0= 0,
+                        xref="container",
+                        tickmode= 'array',
+                        tickvals= mat_ids,
+                        ticktext= mat_ids, # TODO add material names
+                        title=f'{color_by.title()} IDs',
+                    )
+
+            hovertext = [
+                [get_hover_text_from_id(inner_entry, color_by) for inner_entry in outer_entry]
+                for outer_entry in image_values
+            ]
+
+            data.append(
+                go.Heatmap(
+                    z=image_values,
+                    # showscale=True,
+                    colorscale=dcolorsc,
+                    x0=x_min,
+                    dx=abs(x_min - x_max) / (img.shape[0] - 1),
+                    y0=y_min,
+                    dy=abs(y_min - y_max) / (img.shape[1] - 1),
+                    colorbar= cbar,
+                    showscale=legend,
+                    hoverinfo='text',
+                    text=hovertext
+                )
+            )
+            plot = go.Figure(data=data)
+           
+
+            plot.update_layout(
+                xaxis={"title": xlabel},
+                # reversed autorange is required to avoid image needing rotation/flipping in plotly
+                yaxis={"title": ylabel, "autorange": "reversed"},
+                # title=title,
+                autosize=False,
+                height=800,
+                title=title
+            )
+            plot.update_yaxes(
+                scaleanchor="x",
+                scaleratio=1,
+            )
+            return plot
 
 # patching openmc
 
