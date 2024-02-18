@@ -531,6 +531,7 @@ def get_slice_of_cell_ids(
     return trimmed_image_value
 
 
+
 def plot_plotly(
     geometry,
     origin=None,
