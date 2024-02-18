@@ -355,26 +355,27 @@ def main():
             and isinstance(plot_bottom, float)
         ):
 
+            if basis == 'xy':
+                origin=(
+                    (plot_left+plot_right)/2,
+                    (plot_top+plot_bottom)/2,
+                    slice_value,
+                )
+            elif basis == 'yz':
+                origin=(
+                    slice_value,
+                    (plot_left+plot_right)/2,
+                    (plot_top+plot_bottom)/2,
+                )
+            elif basis == 'xz':
+                origin=(
+                    (plot_left+plot_right)/2,
+                    slice_value,
+                    (plot_top+plot_bottom)/2,
+                )
+
             if backend == "matplotlib":
 
-                if basis == 'xy':
-                    origin=(
-                        (plot_left+plot_right)/2,
-                        (plot_top+plot_bottom)/2,
-                        slice_value,
-                    )
-                elif basis == 'yz':
-                    origin=(
-                        slice_value,
-                        (plot_left+plot_right)/2,
-                        (plot_top+plot_bottom)/2,
-                    )
-                elif basis == 'xz':
-                    origin=(
-                        (plot_left+plot_right)/2,
-                        slice_value,
-                        (plot_top+plot_bottom)/2,
-                    )
                 width_x=plot_left-plot_right
                 width_y=plot_top-plot_bottom
                 print('origin',origin)
@@ -394,7 +395,6 @@ def main():
                 plt.title(title)
                 plt.savefig("openmc_plot_geometry_image.png")
                 st.pyplot(plt)
-                # st.image("openmc_plot_geometry_image.png", use_column_width="always")
 
                 with open("openmc_plot_geometry_image.png", "rb") as file:
                     st.sidebar.download_button(
@@ -404,58 +404,18 @@ def main():
                         mime="image/png",
                     )
             else:
-                data = [
-                    go.Heatmap(
-                        z=color_data_slice,
-                        showscale=False,
-                        colorscale="viridis",
-                        x0=plot_left,
-                        dx=abs(plot_left - plot_right) / (len(color_data_slice[0]) - 1),
-                        y0=plot_bottom,
-                        dy=abs(plot_bottom - plot_top) / (len(color_data_slice) - 1),
-                        # colorbar=dict(title=dict(side="right", text=cbar_label)),
-                        # text = material_ids,
-                        # hovertemplate=
-                        # # 'material ID = %{z}<br>'+
-                        # "Cell ID = %{z}<br>" +
-                        # # '<br>%{text}<br>'+
-                        # xlabel[:2].title()
-                        # + ": %{x} cm<br>"
-                        # + ylabel[:2].title()
-                        # + ": %{y} cm<br>",
-                    )
-                ]
-
-                if outline is not None:
-                    data.append(
-                        go.Contour(
-                            z=outline_data_slice,
-                            x0=plot_left,
-                            dx=abs(plot_left - plot_right)
-                            / (len(outline_data_slice[0]) - 1),
-                            y0=plot_bottom,
-                            dy=abs(plot_bottom - plot_top)
-                            / (len(outline_data_slice) - 1),
-                            contours_coloring="lines",
-                            line_width=1,
-                            colorscale=[[0, "rgb(0, 0, 0)"], [1.0, "rgb(0, 0, 0)"]],
-                            showscale=False,
-                        )
-                    )
-
-                plot = go.Figure(data=data)
-
-                plot.update_layout(
-                    xaxis={"title": xlabel},
-                    # reversed autorange is required to avoid image needing rotation/flipping in plotly
-                    yaxis={"title": ylabel, "autorange": "reversed"},
-                    title=title,
-                    autosize=False,
-                    height=800,
-                )
-                plot.update_yaxes(
-                    scaleanchor="x",
-                    scaleratio=1,
+                from openmc_geometry_plot import plot_plotly
+                plot = plot_plotly(
+                    my_geometry,
+                    origin=origin,
+                    # width=[width_x,width_y],
+                    pixels=pixels,
+                    basis=basis,
+                    color_by=color_by,
+                    colors=my_colors,
+                    legend=legend,
+                    axis_units=axis_units,
+                    outline=outline,               
                 )
 
                 plot.write_html("openmc_plot_geometry_image.html")
