@@ -115,11 +115,10 @@ def main():
 
     # CSG route
     elif dagmc_file is None and geometry_xml_file is not None:
-        # print('got here')
+
         save_uploadedfile(geometry_xml_file)
 
         tree = ET.parse(geometry_xml_file.name)
-        # tree = ET.parse('geometry.xml')
 
         root = tree.getroot()
         all_cells = root.findall("cell")
@@ -149,8 +148,7 @@ def main():
             my_mats.append(new_mat)
 
         my_geometry = openmc.Geometry.from_xml(
-            path='geometry.xml',
-            # path=geometry_xml_file.name,
+            path=geometry_xml_file.name,
             materials=my_mats
         )
         all_cells = my_geometry.get_all_cells()
