@@ -17,6 +17,7 @@ def save_uploadedfile(uploadedfile):
     return st.success(f"Saved File to {uploadedfile.name}")
 
 
+
 def header():
     """This section writes out the page header common to all tabs"""
 
@@ -41,41 +42,24 @@ def header():
 
 def main():
 
-    file_label_col1, file_label_col2 = st.columns([1, 1])
-    file_label_col1.write(
-        """
-            👉 Create your ```openmc.Geometry()``` and export the geometry xml file using ```export_to_xml()```.
 
-            Not got a geometry.xml file handy, right mouse 🖱️ click and save these links 
-            [ example 1 ](https://raw.githubusercontent.com/fusion-energy/openmc_geometry_plot/31be0556f3f34c102cab3de094df08f48acad5ca/examples/csg_tokamak/geometry.xml),
-            [ example 2 ](https://raw.githubusercontent.com/fusion-energy/openmc_geometry_plot/31be0556f3f34c102cab3de094df08f48acad5ca/examples/csg_cylinder_box/geometry.xml)
-
-        """
-    )
-    file_label_col2.write(
-        """
-            👉 Create your DAGMC h5m file using tools like [CAD-to-h5m](https://github.com/fusion-energy/cad_to_dagmc)
-            
-            Not got a DAGMC h5m file handy, right mouse 🖱️ click and save these links 
-            [ example 1 ](https://github.com/fusion-energy/openmc_geometry_plot/raw/31be0556f3f34c102cab3de094df08f48acad5ca/examples/dagmc_tokamak/dagmc_180_tokamak.h5m)
-
-        """
-    )
-
-    file_col1, file_col2 = st.columns([1, 1])
+    file_col1, file_col2 = st.sidebar.columns([1, 1])
     geometry_xml_file = file_col1.file_uploader(
         "Upload your geometry.xml", type=["xml"]
     )
-    dagmc_file = file_col2.file_uploader("Upload your DAGMC h5m", type=["h5m"])
-
+    dagmc_file = file_col2.file_uploader("Optionally upload your DAGMC h5m", type=["h5m"])
+ 
     my_geometry = None
 
     if dagmc_file is None and geometry_xml_file is None:
-        new_title = '<center><p style="font-family:sans-serif; color:Red; font-size: 30px;">Upload your geometry.xml or DAGMC h5m file</p></center>'
-        st.markdown(new_title, unsafe_allow_html=True)
+        title_1 = '<center><p style="font-family:sans-serif; font-size: 30px;">Upload your geometry.xml file</p></center>'
+        st.markdown(title_1, unsafe_allow_html=True)
 
-        sub_title = '<center><p> Not got geometry files handy? Download an example <a href="https://raw.githubusercontent.com/fusion-energy/openmc_plot/main/examples/tokamak/geometry.xml" download>geometry.xml</a> or DAGMC h5m file</p></center>'
-        st.markdown(sub_title, unsafe_allow_html=True)
+        title_2 = '<center><p style="font-family:sans-serif; font-size: 30px;">Create an openmc.Geometry() and export the geometry xml file using export_to_xml().</p></center>'
+        st.markdown(title_2, unsafe_allow_html=True)
+
+        title_3 = '<center><p> Not got geometry files handy? Right mouse 🖱️ click and save this link <a href="https://raw.githubusercontent.com/fusion-energy/openmc_geometry_plot/31be0556f3f34c102cab3de094df08f48acad5ca/examples/csg_tokamak/geometry.xml" download>geometry.xml</a></p></center>'
+        st.markdown(title_3, unsafe_allow_html=True)
 
     # DAGMC route
     elif dagmc_file is not None and geometry_xml_file is not None:
@@ -131,10 +115,11 @@ def main():
 
     # CSG route
     elif dagmc_file is None and geometry_xml_file is not None:
-
+        # print('got here')
         save_uploadedfile(geometry_xml_file)
 
         tree = ET.parse(geometry_xml_file.name)
+        # tree = ET.parse('geometry.xml')
 
         root = tree.getroot()
         all_cells = root.findall("cell")
@@ -164,7 +149,9 @@ def main():
             my_mats.append(new_mat)
 
         my_geometry = openmc.Geometry.from_xml(
-            path=geometry_xml_file.name, materials=my_mats
+            path='geometry.xml',
+            # path=geometry_xml_file.name,
+            materials=my_mats
         )
         all_cells = my_geometry.get_all_cells()
 
