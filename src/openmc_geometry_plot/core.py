@@ -714,6 +714,7 @@ def plot_plotly(
             data = []
 
             if outline:
+
                 data.append(
                     go.Contour(
                         z=image_values,

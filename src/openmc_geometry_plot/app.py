@@ -358,11 +358,11 @@ def main():
                     (plot_top+plot_bottom)/2,
                 )
 
+            width_x=plot_left-plot_right
+            width_y=plot_top-plot_bottom
             if backend == "matplotlib":
                 print('plotting with matplotlib')
 
-                width_x=plot_left-plot_right
-                width_y=plot_top-plot_bottom
 
                 plot = my_geometry.plot(
                     origin=origin,
@@ -393,7 +393,7 @@ def main():
                 plot = plot_plotly(
                     my_geometry,
                     origin=origin,
-                    # width=[width_x,width_y],
+                    width=[width_x,width_y],
                     pixels=pixels,
                     basis=basis,
                     color_by=color_by,
