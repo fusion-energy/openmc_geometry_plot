@@ -156,6 +156,7 @@ def main():
     if my_geometry:
         print("geometry is set to something so attempting to plot")
         bb = my_geometry.bounding_box
+        print(f'bounding box {bb}')
 
         basis = st.sidebar.selectbox(
             label="basis",
@@ -201,51 +202,17 @@ def main():
         slice_index = {"xy": 2, "xz": 1, "yz": 0}[basis]
         slice_axis = {"xy": 'Z', "xz": 'Y', "yz": 'X'}[basis]
 
+        # x axis values
         if np.isinf(bb[0][x_index]) or np.isinf(bb[1][x_index]):
-            x_min = st.sidebar.number_input(
-                label="minimum vertical axis value", key="x_min"
+            plot_left = st.sidebar.number_input(
+                value = -2000., label="minimum vertical axis value", key="x_min"
             )
-            x_max = st.sidebar.number_input(
-                label="maximum vertical axis value", key="x_max"
+            plot_right = st.sidebar.number_input(
+                value=2000., label="maximum vertical axis value", key="x_max"
             )
         else:
             x_min = float(bb[0][x_index])
             x_max = float(bb[1][x_index])
-
-        # y axis is y values
-        if np.isinf(bb[0][y_index]) or np.isinf(bb[1][y_index]):
-            y_min = st.sidebar.number_input(
-                label="minimum vertical axis value", key="y_min"
-            )
-            y_max = st.sidebar.number_input(
-                label="maximum vertical axis value", key="y_max"
-            )
-        else:
-            y_min = float(bb[0][y_index])
-            y_max = float(bb[1][y_index])
-
-        # slice axis is z
-        if np.isinf(bb[0][slice_index]) or np.isinf(bb[1][slice_index]):
-            slice_min = st.sidebar.number_input(
-                label="minimum slice value", key="slice_min"
-            )
-            slice_max = st.sidebar.number_input(
-                label="maximum slice value", key="slice_max"
-            )
-        else:
-            slice_min = float(bb[0][slice_index])
-            slice_max = float(bb[1][slice_index])
-
-        if isinstance(slice_min, float) and isinstance(slice_max, float):
-            slice_value = st.sidebar.slider(
-                label="Slice value",
-                min_value=slice_min,
-                max_value=slice_max,
-                value=(slice_min + slice_max) / 2,
-                key="slice_slider",
-                help="Set the value of the slice axis",
-            )
-        if isinstance(x_min, float) and isinstance(x_max, float):
             plot_right, plot_left = st.sidebar.slider(
                 label="Left and right values for the horizontal axis",
                 min_value=x_min,
@@ -255,7 +222,18 @@ def main():
                 help="Set the lowest visible value and highest visible value on the horizontal axis",
             )
 
-        if isinstance(y_min, float) and isinstance(y_max, float):
+
+        # y axis values
+        if np.isinf(bb[0][y_index]) or np.isinf(bb[1][y_index]):
+            plot_bottom = st.sidebar.number_input(
+                value=-2000., label="minimum vertical axis value", key="y_min"
+            )
+            plot_top = st.sidebar.number_input(
+                value=2000., label="maximum vertical axis value", key="y_max"
+            )
+        else:
+            y_min = float(bb[0][y_index])
+            y_max = float(bb[1][y_index])
             plot_bottom, plot_top = st.sidebar.slider(
                 label="Bottom and top values for the vertical axis",
                 min_value=y_min,
@@ -263,6 +241,23 @@ def main():
                 value=(y_min, y_max),
                 key="bottom_top_slider",
                 help="Set the lowest visible value and highest visible value on the vertical axis",
+            )
+
+        # slice axis is z
+        if np.isinf(bb[0][slice_index]) or np.isinf(bb[1][slice_index]):
+            slice_value = st.sidebar.number_input(
+                value=0, label=f"Slice value on slice axis", key="slice_slider"
+            )
+        else:
+            slice_min = float(bb[0][slice_index])
+            slice_max = float(bb[1][slice_index])
+            slice_value = st.sidebar.slider(
+                label=f"Slice value on slice axis",
+                min_value=slice_min,
+                max_value=slice_max,
+                value=(slice_min + slice_max) / 2,
+                key="slice_slider",
+                help="Set the value of the slice axis",
             )
 
         color_by = st.sidebar.selectbox(
@@ -300,10 +295,8 @@ def main():
 
             my_colors = {}
             for id in set_mat_ids:
-                print('id from set_mat_ids', id)
                 hex_color = st.session_state[f"mat_{id}"].lstrip("#")
                 RGB = tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
-                print('RGB',RGB)
                 mat = my_geometry.get_all_materials()[id]
                 my_colors[mat] = RGB
 
@@ -331,10 +324,8 @@ def main():
             for id, value in all_cells.items():
                 hex_color = st.session_state[f"cell_{id}"].lstrip("#")
                 RGB = tuple(int(hex_color[i : i + 2], 16)  for i in (0, 2, 4))
-                print('RGB',RGB)
                 my_colors[value] =  RGB
 
-        print(my_colors)
         title = st.sidebar.text_input(
             "Plot title",
             help="Optionally set your own title for the plot",
@@ -368,10 +359,10 @@ def main():
                 )
 
             if backend == "matplotlib":
+                print('plotting with matplotlib')
 
                 width_x=plot_left-plot_right
                 width_y=plot_top-plot_bottom
-                print('origin',origin)
 
                 plot = my_geometry.plot(
                     origin=origin,
@@ -398,6 +389,7 @@ def main():
                     )
             else:
                 from openmc_geometry_plot import plot_plotly
+                print('plotting with plotly')
                 plot = plot_plotly(
                     my_geometry,
                     origin=origin,
@@ -431,6 +423,8 @@ def main():
             # st.write(f"Cell names found {all_cells.}")
             st.write(f"Bounding box lower left x={bb[0][0]} y={bb[0][1]} z={bb[0][2]}")
             st.write(f"Bounding box upper right x={bb[1][0]} y={bb[1][1]} z={bb[1][2]}")
+        else:
+            print(plot_left,plot_right, plot_top, plot_bottom)
 
 
 if __name__ == "__main__":
