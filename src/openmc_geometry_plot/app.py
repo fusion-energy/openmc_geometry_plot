@@ -167,7 +167,7 @@ def main():
         )
         backend = st.sidebar.selectbox(
             label="Ploting backend",
-            options=("plotly", "matplotlib"),
+            options=("matplotlib", "plotly"),
             index=0,
             key="geometry_plotting_backend",
             help="Create png images with MatPlotLib or HTML plots with Plotly",
