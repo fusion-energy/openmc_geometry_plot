@@ -205,10 +205,10 @@ def main():
         # x axis values
         if np.isinf(bb[0][x_index]) or np.isinf(bb[1][x_index]):
             plot_left = st.sidebar.number_input(
-                value = -2000., label="minimum vertical axis value", key="x_min"
+                value = -2000., label="minimum horizontal axis value", key="x_min"
             )
             plot_right = st.sidebar.number_input(
-                value=2000., label="maximum vertical axis value", key="x_max"
+                value=2000., label="maximum horizontal axis value", key="x_max"
             )
         else:
             x_min = float(bb[0][x_index])
@@ -358,11 +358,10 @@ def main():
                     (plot_top+plot_bottom)/2,
                 )
 
-            width_x=plot_left-plot_right
-            width_y=plot_top-plot_bottom
+            width_x=abs(plot_left-plot_right)
+            width_y=abs(plot_top-plot_bottom)
             if backend == "matplotlib":
                 print('plotting with matplotlib')
-
 
                 plot = my_geometry.plot(
                     origin=origin,
