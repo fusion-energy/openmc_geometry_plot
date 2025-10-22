@@ -1,12 +1,5 @@
 import xml.etree.ElementTree as ET
-from pathlib import Path
-import plotly.graph_objects as go
-import openmc
 import streamlit as st
-import numpy as np
-import colorsys
-
-import openmc_geometry_plot  # adds extra functions to openmc.Geometry
 
 
 def save_uploadedfile(uploadedfile):
@@ -61,6 +54,10 @@ def main():
 
     # DAGMC route
     elif dagmc_file is not None and geometry_xml_file is not None:
+        # Lazy import openmc only when needed
+        import openmc
+        import openmc_geometry_plot  # adds extra functions to openmc.Geometry
+
         save_uploadedfile(dagmc_file)
         save_uploadedfile(geometry_xml_file)
 
@@ -86,6 +83,10 @@ def main():
         set_mat_names = set(dag_universe.material_names)
 
     elif dagmc_file is not None and geometry_xml_file is None:
+        # Lazy import openmc only when needed
+        import openmc
+        import openmc_geometry_plot  # adds extra functions to openmc.Geometry
+
         save_uploadedfile(dagmc_file)
 
         # make a basic openmc geometry
@@ -113,6 +114,9 @@ def main():
 
     # CSG route
     elif dagmc_file is None and geometry_xml_file is not None:
+        # Lazy import openmc only when needed
+        import openmc
+        import openmc_geometry_plot  # adds extra functions to openmc.Geometry
 
         save_uploadedfile(geometry_xml_file)
 
@@ -152,6 +156,10 @@ def main():
         all_cells = my_geometry.get_all_cells()
 
     if my_geometry:
+        # Lazy import heavy libraries only when geometry is loaded
+        import numpy as np
+        import colorsys
+
         print("geometry is set to something so attempting to plot")
         bb = my_geometry.bounding_box
         print(f'bounding box {bb}')
