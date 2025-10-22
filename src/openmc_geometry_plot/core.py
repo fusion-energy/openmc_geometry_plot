@@ -2,9 +2,6 @@ import openmc
 import numpy as np
 import typing
 from pathlib import Path
-import matplotlib
-matplotlib.use('Agg')  # Use non-interactive backend to avoid Tkinter threading issues
-import matplotlib.pyplot as plt
 import math
 import warnings
 import plotly.graph_objects as go

@@ -1,11 +1,10 @@
 import xml.etree.ElementTree as ET
 from pathlib import Path
 import plotly.graph_objects as go
-import matplotlib.pyplot as plt
 import openmc
 import streamlit as st
-from matplotlib import colors
 import numpy as np
+import colorsys
 
 import openmc_geometry_plot  # adds extra functions to openmc.Geometry
 
@@ -164,13 +163,6 @@ def main():
             key="basis",
             help="Setting the direction of view automatically sets the horizontal and vertical axis used for the plot.",
         )
-        backend = st.sidebar.selectbox(
-            label="Ploting backend",
-            options=("matplotlib", "plotly"),
-            index=0,
-            key="geometry_plotting_backend",
-            help="Create png images with MatPlotLib or HTML plots with Plotly",
-        )
         legend = st.sidebar.selectbox(
             label="Legend",
             options=(True, False),
@@ -281,8 +273,9 @@ def main():
             initial_hex_color = []
             for i in range(num_items):
                 hue = (i * 0.618033988749895) % 1.0  # Golden ratio for good color distribution
-                rgba = plt.cm.hsv(hue)
-                initial_hex_color.append(colors.rgb2hex(rgba))
+                rgb = colorsys.hsv_to_rgb(hue, 0.9, 0.9)  # High saturation and value for vivid colors
+                hex_color = '#{:02x}{:02x}{:02x}'.format(int(rgb[0]*255), int(rgb[1]*255), int(rgb[2]*255))
+                initial_hex_color.append(hex_color)
 
             for c, id in enumerate(set_mat_ids):
                 st.sidebar.color_picker(
@@ -305,8 +298,9 @@ def main():
             initial_hex_color = []
             for i in range(num_items):
                 hue = (i * 0.618033988749895) % 1.0  # Golden ratio for good color distribution
-                rgba = plt.cm.hsv(hue)
-                initial_hex_color.append(colors.rgb2hex(rgba))
+                rgb = colorsys.hsv_to_rgb(hue, 0.9, 0.9)  # High saturation and value for vivid colors
+                hex_color = '#{:02x}{:02x}{:02x}'.format(int(rgb[0]*255), int(rgb[1]*255), int(rgb[2]*255))
+                initial_hex_color.append(hex_color)
 
             for c, cell in enumerate(all_cells.values()):
                 if cell.name in ["", None]:
@@ -360,159 +354,133 @@ def main():
 
             width_x=abs(plot_left-plot_right)
             width_y=abs(plot_top-plot_bottom)
-            if backend == "matplotlib":
-                print('plotting with matplotlib')
 
-                plot = my_geometry.plot(
-                    origin=origin,
-                    width=[width_x,width_y],
-                    pixels=pixels,
-                    basis=basis,
-                    color_by=color_by,
-                    colors=my_colors,
-                    legend=legend,
-                    axis_units=axis_units,
-                    outline=outline,
-                )
+            from openmc_geometry_plot import plot_plotly
+            print('plotting with plotly')
 
-                plt.title(title)
-                plt.savefig("openmc_plot_geometry_image.png")
-                st.pyplot(plt)
+            # Initialize zoom state
+            if 'zoom_region' not in st.session_state:
+                st.session_state.zoom_region = None
 
-                with open("openmc_plot_geometry_image.png", "rb") as file:
-                    st.sidebar.download_button(
-                        label="Download image",
-                        data=file,
-                        file_name="openmc_plot_geometry_image.png",
-                        mime="image/png",
-                    )
-            else:
-                from openmc_geometry_plot import plot_plotly
-                print('plotting with plotly')
+            # Add help text about zoom functionality
+            st.info("""
+            🔍 **Interactive High-Resolution Zoom:**
+            - 🖱️ Click and drag on the plot to select a region
+            - The plot will automatically regenerate at higher resolution for the selected area
+            """)
 
-                # Initialize zoom state
-                if 'zoom_region' not in st.session_state:
+            # Check if we should use zoomed coordinates
+            use_zoom = st.session_state.zoom_region is not None
+
+            if use_zoom:
+                zoom_data = st.session_state.zoom_region
+                # Calculate new origin and width from selection
+                x_range = zoom_data['x_range']
+                y_range = zoom_data['y_range']
+
+                # Convert axis units back to cm
+                axis_scaling_factor = {'km': 0.00001, 'm': 0.01, 'cm': 1, 'mm': 10}
+                scale = axis_scaling_factor[axis_units]
+
+                x_min_zoom = x_range[0] / scale
+                x_max_zoom = x_range[1] / scale
+                y_min_zoom = y_range[0] / scale
+                y_max_zoom = y_range[1] / scale
+
+                width_x_zoom = abs(x_max_zoom - x_min_zoom)
+                width_y_zoom = abs(y_max_zoom - y_min_zoom)
+
+                origin_x_zoom = (x_min_zoom + x_max_zoom) / 2
+                origin_y_zoom = (y_min_zoom + y_max_zoom) / 2
+
+                # Update origin based on basis
+                if basis == 'xy':
+                    origin_zoom = (origin_x_zoom, origin_y_zoom, origin[2])
+                elif basis == 'xz':
+                    origin_zoom = (origin_x_zoom, origin[1], origin_y_zoom)
+                elif basis == 'yz':
+                    origin_zoom = (origin[0], origin_x_zoom, origin_y_zoom)
+
+                # Use the same pixel count but for a smaller region (higher resolution)
+                actual_pixels = pixels
+                actual_origin = origin_zoom
+                actual_width = [width_x_zoom, width_y_zoom]
+
+                # Calculate the resolution improvement factor
+                zoom_factor = (width_x * width_y) / (width_x_zoom * width_y_zoom)
+
+                st.success(f"🔍 Zoomed view (pixels distributed over {zoom_factor:.1f}x smaller area)")
+                if st.button("↩️ Reset to Full View"):
                     st.session_state.zoom_region = None
+                    st.rerun()
+            else:
+                actual_pixels = pixels
+                actual_origin = origin
+                actual_width = [width_x, width_y]
 
-                # Add help text about zoom functionality
-                st.info("""
-                🔍 **Interactive High-Resolution Zoom:**
-                - 🖱️ Click and drag on the plot to select a region
-                - The plot will automatically regenerate at higher resolution for the selected area
-                """)
+            plot = plot_plotly(
+                my_geometry,
+                origin=actual_origin,
+                width=actual_width,
+                pixels=actual_pixels,
+                basis=basis,
+                color_by=color_by,
+                colors=my_colors,
+                legend=legend,
+                axis_units=axis_units,
+                outline=outline,
+                title=title
+            )
 
-                # Check if we should use zoomed coordinates
-                use_zoom = st.session_state.zoom_region is not None
+            plot.write_html("openmc_plot_geometry_image.html")
 
-                if use_zoom:
-                    zoom_data = st.session_state.zoom_region
-                    # Calculate new origin and width from selection
-                    x_range = zoom_data['x_range']
-                    y_range = zoom_data['y_range']
+            with open("openmc_plot_geometry_image.html", "rb") as file:
+                st.sidebar.download_button(
+                    label="Download image",
+                    data=file,
+                    file_name="openmc_plot_geometry_image.html",
+                    mime=None,
+                )
 
-                    # Convert axis units back to cm
-                    axis_scaling_factor = {'km': 0.00001, 'm': 0.01, 'cm': 1, 'mm': 10}
-                    scale = axis_scaling_factor[axis_units]
+            # Use on_select to capture box selections
+            # Hide the modebar since those tools interfere with our zoom resolution feature
+            selection = st.plotly_chart(
+                plot,
+                use_container_width=True,
+                key="plotly_plot",
+                on_select="rerun",
+                selection_mode="box",
+                config={'displayModeBar': False}
+            )
 
-                    x_min_zoom = x_range[0] / scale
-                    x_max_zoom = x_range[1] / scale
-                    y_min_zoom = y_range[0] / scale
-                    y_max_zoom = y_range[1] / scale
+            # Check if user made a selection
+            # When on_select="rerun", selection data is returned in the event object
+            if selection is not None and hasattr(selection, 'selection'):
+                # Access box selection data
+                if hasattr(selection.selection, 'box') and len(selection.selection.box) > 0:
+                    box = selection.selection.box[0]
 
-                    width_x_zoom = abs(x_max_zoom - x_min_zoom)
-                    width_y_zoom = abs(y_max_zoom - y_min_zoom)
+                    # Box data format from Plotly: {'range': {'x': [x0, x1], 'y': [y0, y1]}}
+                    # or possibly {'x': [x0, x1], 'y': [y0, y1]}
+                    if 'range' in box:
+                        x_range = box['range']['x']
+                        y_range = box['range']['y']
+                    elif 'x' in box and 'y' in box:
+                        x_range = box['x']
+                        y_range = box['y']
+                    else:
+                        # Debug: show what's actually in box
+                        st.error(f"Unexpected box format: {box}")
+                        x_range = None
+                        y_range = None
 
-                    origin_x_zoom = (x_min_zoom + x_max_zoom) / 2
-                    origin_y_zoom = (y_min_zoom + y_max_zoom) / 2
-
-                    # Update origin based on basis
-                    if basis == 'xy':
-                        origin_zoom = (origin_x_zoom, origin_y_zoom, origin[2])
-                    elif basis == 'xz':
-                        origin_zoom = (origin_x_zoom, origin[1], origin_y_zoom)
-                    elif basis == 'yz':
-                        origin_zoom = (origin[0], origin_x_zoom, origin_y_zoom)
-
-                    # Use the same pixel count but for a smaller region (higher resolution)
-                    actual_pixels = pixels
-                    actual_origin = origin_zoom
-                    actual_width = [width_x_zoom, width_y_zoom]
-
-                    # Calculate the resolution improvement factor
-                    zoom_factor = (width_x * width_y) / (width_x_zoom * width_y_zoom)
-
-                    st.success(f"🔍 Zoomed view (pixels distributed over {zoom_factor:.1f}x smaller area)")
-                    if st.button("↩️ Reset to Full View"):
-                        st.session_state.zoom_region = None
+                    if x_range and y_range:
+                        # Automatically zoom when box selection is made
+                        st.session_state.zoom_region = {
+                            'x_range': x_range,
+                            'y_range': y_range
+                        }
                         st.rerun()
-                else:
-                    actual_pixels = pixels
-                    actual_origin = origin
-                    actual_width = [width_x, width_y]
-
-                plot = plot_plotly(
-                    my_geometry,
-                    origin=actual_origin,
-                    width=actual_width,
-                    pixels=actual_pixels,
-                    basis=basis,
-                    color_by=color_by,
-                    colors=my_colors,
-                    legend=legend,
-                    axis_units=axis_units,
-                    outline=outline,
-                    title=title
-                )
-
-                plot.write_html("openmc_plot_geometry_image.html")
-
-                with open("openmc_plot_geometry_image.html", "rb") as file:
-                    st.sidebar.download_button(
-                        label="Download image",
-                        data=file,
-                        file_name="openmc_plot_geometry_image.html",
-                        mime=None,
-                    )
-
-                # Use on_select to capture box selections
-                # Hide the modebar since those tools interfere with our zoom resolution feature
-                selection = st.plotly_chart(
-                    plot,
-                    use_container_width=True,
-                    key="plotly_plot",
-                    on_select="rerun",
-                    selection_mode="box",
-                    config={'displayModeBar': False}
-                )
-
-                # Check if user made a selection
-                # When on_select="rerun", selection data is returned in the event object
-                if selection is not None and hasattr(selection, 'selection'):
-                    # Access box selection data
-                    if hasattr(selection.selection, 'box') and len(selection.selection.box) > 0:
-                        box = selection.selection.box[0]
-
-                        # Box data format from Plotly: {'range': {'x': [x0, x1], 'y': [y0, y1]}}
-                        # or possibly {'x': [x0, x1], 'y': [y0, y1]}
-                        if 'range' in box:
-                            x_range = box['range']['x']
-                            y_range = box['range']['y']
-                        elif 'x' in box and 'y' in box:
-                            x_range = box['x']
-                            y_range = box['y']
-                        else:
-                            # Debug: show what's actually in box
-                            st.error(f"Unexpected box format: {box}")
-                            x_range = None
-                            y_range = None
-
-                        if x_range and y_range:
-                            # Automatically zoom when box selection is made
-                            st.session_state.zoom_region = {
-                                'x_range': x_range,
-                                'y_range': y_range
-                            }
-                            st.rerun()
 
             st.write("Model info")
             st.write(f"origin {origin}")
