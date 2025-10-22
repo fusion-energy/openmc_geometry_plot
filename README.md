@@ -7,14 +7,14 @@ Create axis slice plots of OpenMC geomtry:
 
 This package is deployed on [xsplot.com](https://www.xsplot.com) as part of the ```openmc_plot``` suite of plotting apps
 
-![openmc geometry plot](https://user-images.githubusercontent.com/8583900/213252783-526fa814-2abd-4aac-bd1d-9cf0024a7039.png)
+![openmc geometry plot](examples/animation.gif)
 
 # Local install
 
 You will need to first install OpenMC (0.15.3 or newer).
 
 
-There are several methods but perhaps the quickest is to use this Pip extra index as it includes a recent version of OpenMC 0.15.3-dev (which is needed to run the app).
+There are several methods but perhaps the quickest is to use this Pip extra index as it includes a recent version of OpenMC 0.15.3-dev. A recently added feature (map ID) is used by the package so a recent version of OpenMC is needed.
 
 
 ```bash
