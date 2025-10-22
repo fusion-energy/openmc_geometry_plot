@@ -739,12 +739,15 @@ def plot_plotly(
             yaxis={"title": ylabel, "autorange": "reversed"},
             autosize=False,
             height=800,
-            title=title
+            title=title,
+            # Enable box select mode for Streamlit's on_select to capture regions
+            dragmode='select',  # Default to box select mode
         )
         plot.update_yaxes(
             scaleanchor="x",
             scaleratio=1,
         )
+
         return plot
 
 # patching openmc
