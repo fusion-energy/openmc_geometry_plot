@@ -2,6 +2,8 @@ import openmc
 import numpy as np
 import typing
 from pathlib import Path
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend to avoid Tkinter threading issues
 import matplotlib.pyplot as plt
 import math
 from tempfile import TemporaryDirectory
@@ -297,6 +299,14 @@ def get_slice_of_material_ids(
             basis=basis,
         )
     finally:
+        # Finalize OpenMC library to clean up resources
+        try:
+            from openmc import lib as openmc_lib
+            if openmc_lib.is_initialized:
+                openmc_lib.finalize()
+        except (ImportError, AttributeError):
+            pass  # OpenMC lib not available or not initialized
+
         # Restore original materials
         for mat_id in materials_to_restore:
             all_materials[mat_id].nuclides.clear()
@@ -386,6 +396,14 @@ def get_slice_of_cell_ids(
             basis=basis,
         )
     finally:
+        # Finalize OpenMC library to clean up resources
+        try:
+            from openmc import lib as openmc_lib
+            if openmc_lib.is_initialized:
+                openmc_lib.finalize()
+        except (ImportError, AttributeError):
+            pass  # OpenMC lib not available or not initialized
+
         # Restore original materials
         for mat_id in materials_to_restore:
             all_materials[mat_id].nuclides.clear()
