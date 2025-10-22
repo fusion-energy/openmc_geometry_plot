@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import openmc
 import streamlit as st
 from matplotlib import colors
-from pylab import cm, colormaps
 import numpy as np
 
 import openmc_geometry_plot  # adds extra functions to openmc.Geometry
@@ -274,16 +273,15 @@ def main():
             key="outline",
             help="Allows an outline to be drawn around the cells or materials, select None for no outline",
         )
-        selected_color_map = st.sidebar.selectbox(
-            label="Color map", options=colormaps(), index=82
-        )  # index 82 is tab20c
 
         if color_by == "material":
-            cmap = cm.get_cmap(selected_color_map, len(set_mat_ids))
+            num_items = len(set_mat_ids)
+            # Use HSV color space with golden ratio to generate distinct colors
+            # This works well for any number of materials
             initial_hex_color = []
-            for i in range(cmap.N):
-                rgba = cmap(i)
-                # rgb2hex accepts rgb or rgba
+            for i in range(num_items):
+                hue = (i * 0.618033988749895) % 1.0  # Golden ratio for good color distribution
+                rgba = plt.cm.hsv(hue)
                 initial_hex_color.append(colors.rgb2hex(rgba))
 
             for c, id in enumerate(set_mat_ids):
@@ -301,11 +299,13 @@ def main():
                 my_colors[mat] = RGB
 
         elif color_by == "cell":
-            cmap = cm.get_cmap(selected_color_map, len(all_cells))
+            num_items = len(all_cells)
+            # Use HSV color space with golden ratio to generate distinct colors
+            # This works well for any number of cells
             initial_hex_color = []
-            for i in range(cmap.N):
-                rgba = cmap(i)
-                # rgb2hex accepts rgb or rgba
+            for i in range(num_items):
+                hue = (i * 0.618033988749895) % 1.0  # Golden ratio for good color distribution
+                rgba = plt.cm.hsv(hue)
                 initial_hex_color.append(colors.rgb2hex(rgba))
 
             for c, cell in enumerate(all_cells.values()):

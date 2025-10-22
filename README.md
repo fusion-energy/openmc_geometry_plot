@@ -11,11 +11,16 @@ This package is deployed on [xsplot.com](https://www.xsplot.com) as part of the 
 
 # Local install
 
-You will need to first install openmc. There are several methods but perhaps the quickest is to use Conda.
+You will need to first install openmc.
+
+
+There are several methods but perhaps the quickest is to use this Pip extra index as it includes a recent version of OpenMC develop branch.
+
 
 ```bash
-conda install -c conda-forge openmc
+python -m pip install --extra-index-url https://shimwell.github.io/wheels openmc
 ```
+
 
 Then you can install ```openmc_geometry_plot``` with pip
 

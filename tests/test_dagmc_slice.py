@@ -4,31 +4,34 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+# Path to the DAGMC test file
+DAGMC_FILE = Path(__file__).parent / "two_disconnected_cubes.h5m"
+
 
 def test_is_geometry_dagmc():
     bound_dag_univ = openmc.DAGMCUniverse(
-        filename="two_disconnected_cubes.h5m"
+        filename=str(DAGMC_FILE)
     ).bounded_universe()
     my_geometry = openmc.Geometry(root=bound_dag_univ)
     assert my_geometry.is_geometry_dagmc() is True
 
     # same as above but no bounding cell
-    bound_dag_univ = openmc.DAGMCUniverse(filename="two_disconnected_cubes.h5m")
+    bound_dag_univ = openmc.DAGMCUniverse(filename=str(DAGMC_FILE))
     my_geometry = openmc.Geometry(root=bound_dag_univ)
     assert my_geometry.is_geometry_dagmc() is True
 
 
 def test_get_dagmc_filepath():
-    bound_dag_univ = openmc.DAGMCUniverse(filename="two_disconnected_cubes.h5m")
+    bound_dag_univ = openmc.DAGMCUniverse(filename=str(DAGMC_FILE))
     my_geometry = openmc.Geometry(root=bound_dag_univ)
     assert (
         my_geometry.get_dagmc_filepath()
-        == Path(__file__).parent / "two_disconnected_cubes.h5m"
+        == DAGMC_FILE.absolute()
     )
 
 
 def test_get_dagmc_universe():
-    bound_dag_univ = openmc.DAGMCUniverse(filename="two_disconnected_cubes.h5m")
+    bound_dag_univ = openmc.DAGMCUniverse(filename=str(DAGMC_FILE))
     my_geometry = openmc.Geometry(root=bound_dag_univ)
     assert isinstance(my_geometry.get_dagmc_universe(), openmc.DAGMCUniverse)
 
@@ -36,7 +39,7 @@ def test_get_dagmc_universe():
 # TODO add check that the numbers returned are correct
 def test_slice_material_dagmc_file():
     bound_dag_univ = openmc.DAGMCUniverse(
-        filename="two_disconnected_cubes.h5m"
+        filename=str(DAGMC_FILE)
     ).bounded_universe()
     my_geometry = openmc.Geometry(root=bound_dag_univ)
 
@@ -50,7 +53,7 @@ def test_slice_material_dagmc_file():
 # TODO add check that the numbers returned are correct
 def test_slice_cell_dagmc_file():
     bound_dag_univ = openmc.DAGMCUniverse(
-        filename="two_disconnected_cubes.h5m"
+        filename=str(DAGMC_FILE)
     ).bounded_universe()
     my_geometry = openmc.Geometry(root=bound_dag_univ)
 
