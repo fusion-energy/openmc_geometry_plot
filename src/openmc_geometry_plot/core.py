@@ -269,15 +269,32 @@ def get_slice_of_material_ids(
         print(f"Generating material ID map: origin={origin}, width={width}, basis={basis}, pixels=({pixels_across}, {pixels_up})")
 
     # Create a model from the geometry
-    # For materials without nuclides, add a dummy nuclide to allow OpenMC to initialize
-    all_materials = self.get_all_materials()
-    materials_to_restore = {}
-    for mat_id, mat in all_materials.items():
-        if len(mat.nuclides) == 0 and mat._macroscopic is None:
-            materials_to_restore[mat_id] = mat.nuclides.copy()
-            mat.add_nuclide("He4", 1.0)
+    # Handle DAGMC geometries which need materials created from material names
+    if self.is_geometry_dagmc():
+        dag_universe = self.get_dagmc_universe()
+        mat_names = dag_universe.material_names
 
-    model = openmc.Model(geometry=self)
+        # Create dummy materials for DAGMC
+        all_materials_list = []
+        for i, mat_name in enumerate(mat_names):
+            mat = openmc.Material(name=mat_name)
+            mat.add_nuclide("He4", 1.0)
+            all_materials_list.append(mat)
+
+        model = openmc.Model(geometry=self)
+        model.materials = openmc.Materials(all_materials_list)
+        materials_to_restore = {}
+        all_materials = {}  # Empty for DAGMC
+    else:
+        # For regular geometries, add dummy nuclides to empty materials
+        all_materials = self.get_all_materials()
+        materials_to_restore = {}
+        for mat_id, mat in all_materials.items():
+            if len(mat.nuclides) == 0 and mat._macroscopic is None:
+                materials_to_restore[mat_id] = mat.nuclides.copy()
+                mat.add_nuclide("He4", 1.0)
+
+        model = openmc.Model(geometry=self)
 
     # Set up minimal cross sections if not already configured
     original_cross_sections = None
@@ -366,15 +383,32 @@ def get_slice_of_cell_ids(
         print(f"Generating cell ID map: origin={origin}, width={width}, basis={basis}, pixels=({pixels_across}, {pixels_up})")
 
     # Create a model from the geometry
-    # For materials without nuclides, add a dummy nuclide to allow OpenMC to initialize
-    all_materials = self.get_all_materials()
-    materials_to_restore = {}
-    for mat_id, mat in all_materials.items():
-        if len(mat.nuclides) == 0 and mat._macroscopic is None:
-            materials_to_restore[mat_id] = mat.nuclides.copy()
-            mat.add_nuclide("He4", 1.0)
+    # Handle DAGMC geometries which need materials created from material names
+    if self.is_geometry_dagmc():
+        dag_universe = self.get_dagmc_universe()
+        mat_names = dag_universe.material_names
 
-    model = openmc.Model(geometry=self)
+        # Create dummy materials for DAGMC
+        all_materials_list = []
+        for i, mat_name in enumerate(mat_names):
+            mat = openmc.Material(name=mat_name)
+            mat.add_nuclide("He4", 1.0)
+            all_materials_list.append(mat)
+
+        model = openmc.Model(geometry=self)
+        model.materials = openmc.Materials(all_materials_list)
+        materials_to_restore = {}
+        all_materials = {}  # Empty for DAGMC
+    else:
+        # For regular geometries, add dummy nuclides to empty materials
+        all_materials = self.get_all_materials()
+        materials_to_restore = {}
+        for mat_id, mat in all_materials.items():
+            if len(mat.nuclides) == 0 and mat._macroscopic is None:
+                materials_to_restore[mat_id] = mat.nuclides.copy()
+                mat.add_nuclide("He4", 1.0)
+
+        model = openmc.Model(geometry=self)
 
     # Set up minimal cross sections if not already configured
     original_cross_sections = None
