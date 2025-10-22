@@ -1,8 +1,6 @@
-import os
 import openmc
 import numpy as np
 import typing
-from tempfile import mkdtemp
 from pathlib import Path
 import matplotlib.pyplot as plt
 import math
@@ -10,10 +8,7 @@ from tempfile import TemporaryDirectory
 import warnings
 from PIL import Image
 import matplotlib.image as mpimg
-# import matplotlib.patches as mpatches
-import matplotlib.pyplot as plt
 import plotly.graph_objects as go
-from numpy import asarray
 
 
 def get_rgb_from_int(value: int) -> typing.Tuple[int, int, int]:
@@ -178,6 +173,61 @@ def get_dagmc_universe(self):
             return univ
 
 
+def _calculate_plot_parameters(
+    geometry,
+    view_direction: str,
+    slice_value: typing.Optional[float],
+    plot_left: typing.Optional[float],
+    plot_right: typing.Optional[float],
+    plot_bottom: typing.Optional[float],
+    plot_top: typing.Optional[float],
+):
+    """Helper function to calculate origin, width, and basis for plotting.
+
+    Args:
+        geometry: OpenMC Geometry object
+        view_direction: 'x', 'y', or 'z'
+        slice_value: Position along the view direction
+        plot_left: Left edge of plot
+        plot_right: Right edge of plot
+        plot_bottom: Bottom edge of plot
+        plot_top: Top edge of plot
+
+    Returns:
+        tuple: (origin, width, basis) suitable for model.id_map()
+    """
+    bb = geometry.bounding_box
+
+    # Get plot extent
+    plot_left, plot_right, plot_bottom, plot_top, slice_value = geometry.get_plot_extent(
+        plot_left, plot_right, plot_bottom, plot_top, slice_value, bb, view_direction
+    )
+
+    # Calculate center and dimensions
+    plot_x = (plot_left + plot_right) / 2
+    plot_y = (plot_top + plot_bottom) / 2
+    width_x = abs(plot_left - plot_right)
+    width_y = abs(plot_top - plot_bottom)
+
+    # Map view_direction to basis and origin
+    if view_direction == "z":
+        basis = "xy"
+        origin = (plot_x, plot_y, slice_value)
+        width = (width_x, width_y)
+    elif view_direction == "x":
+        basis = "yz"
+        origin = (slice_value, plot_x, plot_y)
+        width = (width_x, width_y)
+    elif view_direction == "y":
+        basis = "xz"
+        origin = (plot_x, slice_value, plot_y)
+        width = (width_x, width_y)
+    else:
+        raise ValueError(f'view_direction must be "x", "y" or "z", not {view_direction}')
+
+    return origin, width, basis
+
+
 def get_slice_of_material_ids(
     self,
     view_direction: str,
@@ -194,164 +244,77 @@ def get_slice_of_material_ids(
     values represent void space or undefined space.
 
     Args:
-        slice_value:
-        plot_top:
-        plot_bottom:
-        plot_left:
-        plot_right:
-        pixels_across:
-        verbose:
+        view_direction: 'x', 'y', or 'z'
+        slice_value: Position along the view direction axis
+        plot_top: Top edge of the plot region
+        plot_bottom: Bottom edge of the plot region
+        plot_left: Left edge of the plot region
+        plot_right: Right edge of the plot region
+        pixels_across: Number of pixels in the horizontal direction
+        verbose: Print verbose output
+
+    Returns:
+        list: 2D list of material IDs
     """
-
-    tmp_folder = mkdtemp(prefix="openmc_geometry_plotter_tmp_files_")
-    if verbose:
-        print(f"writing files to {tmp_folder}")
-
-    if self.is_geometry_dagmc():
-        dagmc_abs_filepath = self.get_dagmc_filepath()
-
-        os.system(f"cp {dagmc_abs_filepath} {tmp_folder}")
-
-        dag_universe = self.get_dagmc_universe()
-
-        if str(Path(dag_universe.filename).name) != str(Path(dag_universe.filename)):
-            msg = (
-                "Paths for dagmc files that contain folders are not currently "
-                "supported. Try setting your DAGMCUniverse.filename "
-                f"to {Path(dag_universe.filename).name} instead of "
-                f"{Path(dag_universe.filename)}"
-            )
-            raise IsADirectoryError(msg)
-        # dag_universe.filename = dagmc_abs_filepath.name
-
-        # dagmuniverse does not have a get_all_materials
-        mat_names = dag_universe.material_names
-
-        # mat ids are not known by the dagmc file
-        # assumed mat ids start at 1 and continue,
-        # universe.n_cells is the equivilent approximation for cell ids
-        mat_ids = range(1, len(mat_names) + 1)
-
-        # if any of the plot_ are None then this needs calculating
-        # might need to be self.bounding_box
-        bb = dag_universe.bounding_box
-
-    else:
-        original_materials = self.get_all_materials()
-        mat_ids = original_materials.keys()
-
-        mat_names = []
-        for key, value in original_materials.items():
-            mat_names.append(value.name)
-
-        # if any of the plot_ are None then this needs calculating
-        bb = self.bounding_box
-
-    self.export_to_xml(tmp_folder)
-
-    plot_left, plot_right, plot_bottom, plot_top, slice_value = self.get_plot_extent(
-        plot_left, plot_right, plot_bottom, plot_top, slice_value, bb, view_direction
+    # Calculate plot parameters
+    origin, width, basis = _calculate_plot_parameters(
+        self, view_direction, slice_value,
+        plot_left, plot_right, plot_bottom, plot_top
     )
 
-    plot_width = abs(plot_left - plot_right)
-    plot_height = abs(plot_bottom - plot_top)
-
-    aspect_ratio = plot_height / plot_width
+    # Calculate pixel dimensions maintaining aspect ratio
+    aspect_ratio = width[1] / width[0]
     pixels_up = int(pixels_across * aspect_ratio)
 
-    all_materials = []
-    for i, n in zip(mat_ids, mat_names):
-        new_mat = openmc.Material()
-        new_mat.id = i
-        new_mat.name = n
-        new_mat.add_nuclide("He4", 1)
-        all_materials.append(new_mat)
-    nn = openmc.Materials(all_materials)
-    nn.export_to_xml(tmp_folder)
-
-    my_settings = openmc.Settings()
-    my_settings.output = {"summary": False, "tallies": False}
-    # add verbose setting to avoid print out
-    my_settings.particles = 1
-    my_settings.batches = 1
-    my_settings.run_mode = "fixed source"
-    my_settings.export_to_xml(tmp_folder)
-
-    my_plot = openmc.Plot()
-
-    plot_x = (plot_left + plot_right) / 2
-    plot_y = (plot_top + plot_bottom) / 2
-
-    width = plot_left - plot_right
-    height = plot_top - plot_bottom
-    my_plot.width = (width, height)
-
-    if view_direction == "z":
-        my_plot.basis = "xy"
-        my_plot.origin = (plot_x, plot_y, slice_value)
-    if view_direction == "x":
-        my_plot.basis = "yz"
-        my_plot.origin = (slice_value, plot_x, plot_y)
-    if view_direction == "y":
-        my_plot.basis = "xz"
-        my_plot.origin = (plot_x, slice_value, plot_y)
-
-    my_plot.pixels = (pixels_across, pixels_up)
-    colors_dict = {}
-    for mat_id in mat_ids:
-        colors_dict[mat_id] = get_rgb_from_int(mat_id)
-    my_plot.colors = colors_dict
-    my_plot.background = (0, 0, 0)  # void material is 0
-    my_plot.color_by = "material"
-    my_plot.id = 42  # the integer used to name of the plot_1.ppm file
-    my_plots = openmc.Plots([my_plot])
-    my_plots.export_to_xml(tmp_folder)
-
-    if 'cross_sections' in openmc.config.keys():
-        original_cross_sections = openmc.config["cross_sections"]
-    else:
-        original_cross_sections = None
-
-    package_dir = Path(__file__).parent
-    openmc.config["cross_sections"] = package_dir / "cross_sections.xml"
-
-    openmc.plot_geometry(cwd=tmp_folder, output=verbose)
-
-    if original_cross_sections:
-        openmc.config["cross_sections"] = original_cross_sections
-
     if verbose:
-        print(f"Temporary image and xml files written to {tmp_folder}")
+        print(f"Generating material ID map: origin={origin}, width={width}, basis={basis}, pixels=({pixels_across}, {pixels_up})")
 
-    # load the image
-    if (Path(tmp_folder) / f"plot_{my_plot.id}.ppm").is_file():
-        image = Image.open(Path(tmp_folder) / f"plot_{my_plot.id}.ppm")
-    elif (Path(tmp_folder) / f"plot_{my_plot.id}.png").is_file():
-        image = Image.open(Path(tmp_folder) / f"plot_{my_plot.id}.png")
+    # Create a model from the geometry
+    # For materials without nuclides, add a dummy nuclide to allow OpenMC to initialize
+    all_materials = self.get_all_materials()
+    materials_to_restore = {}
+    for mat_id, mat in all_materials.items():
+        if len(mat.nuclides) == 0 and mat._macroscopic is None:
+            materials_to_restore[mat_id] = mat.nuclides.copy()
+            mat.add_nuclide("He4", 1.0)
+
+    model = openmc.Model(geometry=self)
+
+    # Set up minimal cross sections if not already configured
+    original_cross_sections = None
+    if 'cross_sections' not in openmc.config.keys():
+        package_dir = Path(__file__).parent
+        openmc.config["cross_sections"] = package_dir / "cross_sections.xml"
     else:
-        raise FileNotFoundError(f"openmc plot mode image was not found in {tmp_folder}")
+        original_cross_sections = openmc.config["cross_sections"]
 
-    # convert the image to a numpy array
-    image_values = asarray(image)
+    try:
+        # Use the new id_map API to get material IDs
+        id_map = model.id_map(
+            origin=origin,
+            width=width,
+            pixels=(pixels_across, pixels_up),
+            basis=basis,
+        )
+    finally:
+        # Restore original materials
+        for mat_id in materials_to_restore:
+            all_materials[mat_id].nuclides.clear()
 
-    # the image_values have three entries for RGB but we just need one.
-    # this reduces the nested list to contain a single value per pixel
-    # image_value = [
-    #     [inner_entry[0] for inner_entry in outer_entry] for outer_entry in image_values
-    # ]
-    image_value = [
-        [get_int_from_rgb(inner_entry) for inner_entry in outer_entry]
-        for outer_entry in image_values
-    ]
+        # Restore original cross sections config
+        if original_cross_sections is not None:
+            openmc.config["cross_sections"] = original_cross_sections
 
-    # replaces rgb (255,255,255) which is 16777215 values with 0.
-    # 0 is the color for void space
-    # (255,255,255) gets returned by undefined regions outside the geometry
-    trimmed_image_value = [
-        [0 if x == 16777215 else x for x in inner_list] for inner_list in image_value
-    ]
+    # Extract material IDs (index 2 in the last dimension)
+    # id_map shape is (vertical_pixels, horizontal_pixels, 3)
+    # where last dimension is [cell_id, cell_instance, material_id]
+    material_ids = id_map[:, :, 2]
 
-    return trimmed_image_value
+    # Convert negative IDs (void/undefined) to 0 for backward compatibility
+    # OpenMC returns -1 for void and -2 for undefined regions
+    material_ids = np.where(material_ids < 0, 0, material_ids)
+
+    return material_ids.tolist()
 
 
 def get_slice_of_cell_ids(
@@ -370,165 +333,77 @@ def get_slice_of_cell_ids(
     values represent void space or undefined space.
 
     Args:
-        slice_value:
-        plot_top:
-        plot_bottom:
-        plot_left:
-        plot_right:
-        pixels_across:
-        verbose:
+        view_direction: 'x', 'y', or 'z'
+        slice_value: Position along the view direction axis
+        plot_top: Top edge of the plot region
+        plot_bottom: Bottom edge of the plot region
+        plot_left: Left edge of the plot region
+        plot_right: Right edge of the plot region
+        pixels_across: Number of pixels in the horizontal direction
+        verbose: Print verbose output
+
+    Returns:
+        list: 2D list of cell IDs
     """
-
-    tmp_folder = mkdtemp(prefix="openmc_geometry_plotter_tmp_files_")
-    if verbose:
-        print(f"writing files to {tmp_folder}")
-
-    if self.is_geometry_dagmc():
-        dagmc_abs_filepath = self.get_dagmc_filepath()
-
-        os.system(f"cp {dagmc_abs_filepath} {tmp_folder}")
-
-        dag_universe = self.get_dagmc_universe()
-
-        if str(Path(dag_universe.filename).name) != str(Path(dag_universe.filename)):
-            msg = (
-                "Paths for dagmc files that contain folders are not currently "
-                "supported. Try setting your DAGMCUniverse.filename "
-                f"to {Path(dag_universe.filename).name} instead of "
-                f"{Path(dag_universe.filename)}"
-            )
-            raise IsADirectoryError(msg)
-        # dag_universe.filename = dagmc_abs_filepath.name
-
-        # dagmuniverse does not have a get_all_materials
-        mat_names = dag_universe.material_names
-
-        # mat ids are not known by the dagmc file
-        # assumed mat ids start at 1 and continue,
-        # universe.n_cells is the equivilent approximation for cell ids
-        mat_ids = range(1, len(mat_names) + 1)
-
-        # if any of the plot_ are None then this needs calculating
-        # might need to be self.bounding_box
-        bb = dag_universe.bounding_box
-
-    else:
-        original_materials = self.get_all_materials()
-        mat_ids = original_materials.keys()
-
-        mat_names = []
-        for key, value in original_materials.items():
-            mat_names.append(value.name)
-
-        bb = self.bounding_box
-
-    self.export_to_xml(tmp_folder)
-
-    plot_left, plot_right, plot_bottom, plot_top, slice_value = self.get_plot_extent(
-        plot_left, plot_right, plot_bottom, plot_top, slice_value, bb, view_direction
+    # Calculate plot parameters
+    origin, width, basis = _calculate_plot_parameters(
+        self, view_direction, slice_value,
+        plot_left, plot_right, plot_bottom, plot_top
     )
 
-    plot_width = abs(plot_left - plot_right)
-    plot_height = abs(plot_bottom - plot_top)
-
-    aspect_ratio = plot_height / plot_width
+    # Calculate pixel dimensions maintaining aspect ratio
+    aspect_ratio = width[1] / width[0]
     pixels_up = int(pixels_across * aspect_ratio)
 
-    # might not work for dagmc model
-    cell_ids = self.get_all_cells().keys()
-
-    all_materials = []
-    for i, n in zip(mat_ids, mat_names):
-        new_mat = openmc.Material()
-        new_mat.id = i
-        new_mat.name = n
-        new_mat.add_nuclide("He4", 1)
-        all_materials.append(new_mat)
-    nn = openmc.Materials(all_materials)
-    nn.export_to_xml(tmp_folder)
-
-    my_settings = openmc.Settings()
-    my_settings.output = {"summary": False, "tallies": False}
-    my_settings.particles = 1
-    my_settings.batches = 1
-    my_settings.run_mode = "fixed source"
-    my_settings.export_to_xml(tmp_folder)
-
-    my_plot = openmc.Plot()
-
-    plot_x = (plot_left + plot_right) / 2
-    plot_y = (plot_top + plot_bottom) / 2
-
-    width = plot_left - plot_right
-    height = plot_top - plot_bottom
-    my_plot.width = (width, height)
-
-    if view_direction == "z":
-        my_plot.basis = "xy"
-        my_plot.origin = (plot_x, plot_y, slice_value)
-    if view_direction == "x":
-        my_plot.basis = "yz"
-        my_plot.origin = (slice_value, plot_x, plot_y)
-    if view_direction == "y":
-        my_plot.basis = "xz"
-        my_plot.origin = (plot_x, slice_value, plot_y)
-
-    my_plot.pixels = (pixels_across, pixels_up)
-    # my_plot.pixels = (100,100)
-    colors_dict = {}
-    for cell_id in cell_ids:
-        # TODO make use of rgb to int convertor
-        colors_dict[cell_id] = get_rgb_from_int(cell_id)
-    my_plot.colors = colors_dict
-    my_plot.background = (0, 0, 0)  # void material is 0
-    my_plot.color_by = "cell"
-    my_plot.id = 24  # the integer used to name of the plot_1.ppm file
-    my_plots = openmc.Plots([my_plot])
-    my_plots.export_to_xml(tmp_folder)
-
-    if 'cross_sections' in openmc.config.keys():
-        original_cross_sections = openmc.config["cross_sections"]
-    else:
-        original_cross_sections = None
-
-    # TODO unset this afterwards
-    package_dir = Path(__file__).parent
-    openmc.config["cross_sections"] = package_dir / "cross_sections.xml"
-
-    openmc.plot_geometry(cwd=tmp_folder, output=verbose)
-
-    if original_cross_sections:
-        openmc.config["cross_sections"] = original_cross_sections
-
     if verbose:
-        print(f"Temporary image and xml files written to {tmp_folder}")
+        print(f"Generating cell ID map: origin={origin}, width={width}, basis={basis}, pixels=({pixels_across}, {pixels_up})")
 
-    # load the image
-    if (Path(tmp_folder) / f"plot_{my_plot.id}.ppm").is_file():
-        image = Image.open(Path(tmp_folder) / f"plot_{my_plot.id}.ppm")
-    elif (Path(tmp_folder) / f"plot_{my_plot.id}.png").is_file():
-        image = Image.open(Path(tmp_folder) / f"plot_{my_plot.id}.png")
+    # Create a model from the geometry
+    # For materials without nuclides, add a dummy nuclide to allow OpenMC to initialize
+    all_materials = self.get_all_materials()
+    materials_to_restore = {}
+    for mat_id, mat in all_materials.items():
+        if len(mat.nuclides) == 0 and mat._macroscopic is None:
+            materials_to_restore[mat_id] = mat.nuclides.copy()
+            mat.add_nuclide("He4", 1.0)
+
+    model = openmc.Model(geometry=self)
+
+    # Set up minimal cross sections if not already configured
+    original_cross_sections = None
+    if 'cross_sections' not in openmc.config.keys():
+        package_dir = Path(__file__).parent
+        openmc.config["cross_sections"] = package_dir / "cross_sections.xml"
     else:
-        raise FileNotFoundError(f"openmc plot mode image was not found in {tmp_folder}")
+        original_cross_sections = openmc.config["cross_sections"]
 
-    # convert the image to a numpy array
-    image_values = asarray(image)
+    try:
+        # Use the new id_map API to get cell IDs
+        id_map = model.id_map(
+            origin=origin,
+            width=width,
+            pixels=(pixels_across, pixels_up),
+            basis=basis,
+        )
+    finally:
+        # Restore original materials
+        for mat_id in materials_to_restore:
+            all_materials[mat_id].nuclides.clear()
 
-    # the image_values have three entries for RGB but we just need one.
-    # this reduces the nested list to contain a single value per pixel
-    image_value = [
-        [get_int_from_rgb(inner_entry) for inner_entry in outer_entry]
-        for outer_entry in image_values
-    ]
+        # Restore original cross sections config
+        if original_cross_sections is not None:
+            openmc.config["cross_sections"] = original_cross_sections
 
-    # replaces rgb (255,255,255) which is 16777215 values with 0.
-    # 0 is the color for void space
-    # (255,255,255) gets returned by undefined regions outside the geometry
-    trimmed_image_value = [
-        [0 if x == 16777215 else x for x in inner_list] for inner_list in image_value
-    ]
+    # Extract cell IDs (index 0 in the last dimension)
+    # id_map shape is (vertical_pixels, horizontal_pixels, 3)
+    # where last dimension is [cell_id, cell_instance, material_id]
+    cell_ids = id_map[:, :, 0]
 
-    return trimmed_image_value
+    # Convert negative IDs (void/undefined) to 0 for backward compatibility
+    # OpenMC returns -1 for void and -2 for undefined regions
+    cell_ids = np.where(cell_ids < 0, 0, cell_ids)
+
+    return cell_ids.tolist()
 
 
 
