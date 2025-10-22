@@ -706,10 +706,48 @@ def plot_plotly(
                 title=f'{color_by.title()} IDs',
             )
 
-        hovertext = [
-            [get_hover_text_from_id(inner_entry, color_by) for inner_entry in outer_entry]
-            for outer_entry in image_values
-        ]
+        # Build comprehensive hover text with both cell and material info
+        all_cells = geometry.get_all_cells()
+        all_materials = geometry.get_all_materials()
+
+        hovertext = []
+        for row_idx, row in enumerate(image_values):
+            row_text = []
+            for col_idx, _ in enumerate(row):
+                cell_id = int(id_map[row_idx, col_idx, 0])
+                mat_id = int(id_map[row_idx, col_idx, 2])
+
+                # Handle negative IDs (void)
+                if cell_id < 0:
+                    cell_id = 0
+                if mat_id < 0:
+                    mat_id = 0
+
+                # Build hover text
+                hover_parts = []
+
+                # Cell info
+                if cell_id == 0:
+                    hover_parts.append("Cell: void")
+                else:
+                    cell = all_cells.get(cell_id)
+                    if cell and cell.name:
+                        hover_parts.append(f"Cell: {cell_id} ({cell.name})")
+                    else:
+                        hover_parts.append(f"Cell: {cell_id}")
+
+                # Material info
+                if mat_id == 0:
+                    hover_parts.append("Material: void")
+                else:
+                    mat = all_materials.get(mat_id)
+                    if mat and mat.name:
+                        hover_parts.append(f"Material: {mat_id} ({mat.name})")
+                    else:
+                        hover_parts.append(f"Material: {mat_id}")
+
+                row_text.append("<br>".join(hover_parts))
+            hovertext.append(row_text)
 
         data.append(
             go.Heatmap(
