@@ -383,6 +383,7 @@ def main():
             if use_zoom:
                 zoom_data = st.session_state.zoom_region
                 # Calculate new origin and width from selection
+                # Note: x_range and y_range are in plot coordinates (already in selected axis_units)
                 x_range = zoom_data['x_range']
                 y_range = zoom_data['y_range']
 
@@ -390,10 +391,27 @@ def main():
                 axis_scaling_factor = {'km': 0.00001, 'm': 0.01, 'cm': 1, 'mm': 10}
                 scale = axis_scaling_factor[axis_units]
 
+                # Convert plot coordinates to cm
                 x_min_zoom = x_range[0] / scale
                 x_max_zoom = x_range[1] / scale
-                y_min_zoom = y_range[0] / scale
-                y_max_zoom = y_range[1] / scale
+
+                # Y-axis is reversed in plotly for display
+                # The selection coordinates need to be inverted relative to the full range
+                # to account for the reversed display
+                y_val_1 = y_range[0] / scale
+                y_val_2 = y_range[1] / scale
+
+                # Get the full y-axis range to invert against
+                full_y_min = plot_bottom
+                full_y_max = plot_top
+                full_y_center = (full_y_min + full_y_max) / 2
+
+                # Invert y-coordinates by flipping them around the center
+                y_val_1_inverted = 2 * full_y_center - y_val_1
+                y_val_2_inverted = 2 * full_y_center - y_val_2
+
+                y_min_zoom = min(y_val_1_inverted, y_val_2_inverted)
+                y_max_zoom = max(y_val_1_inverted, y_val_2_inverted)
 
                 width_x_zoom = abs(x_max_zoom - x_min_zoom)
                 width_y_zoom = abs(y_max_zoom - y_min_zoom)
@@ -401,13 +419,20 @@ def main():
                 origin_x_zoom = (x_min_zoom + x_max_zoom) / 2
                 origin_y_zoom = (y_min_zoom + y_max_zoom) / 2
 
-                # Update origin based on basis
+                # Map plot coordinates to 3D origin based on basis
+                # basis determines which 3D axes are shown:
+                # - 'xy': x-axis shows X, y-axis shows Y
+                # - 'xz': x-axis shows X, y-axis shows Z
+                # - 'yz': x-axis shows Y, y-axis shows Z
                 if basis == 'xy':
                     origin_zoom = (origin_x_zoom, origin_y_zoom, origin[2])
                 elif basis == 'xz':
+                    # x-axis = X coordinate, y-axis = Z coordinate
                     origin_zoom = (origin_x_zoom, origin[1], origin_y_zoom)
                 elif basis == 'yz':
+                    # x-axis = Y coordinate, y-axis = Z coordinate
                     origin_zoom = (origin[0], origin_x_zoom, origin_y_zoom)
+
 
                 # Use the same pixel count but for a smaller region (higher resolution)
                 actual_pixels = pixels
