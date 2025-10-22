@@ -8,7 +8,6 @@ authors = [
   { name="Jonathan Shimwell", email="mail@jshimwell.com" },
 ]
 license = {file = "LICENSE.txt"}
-version = "0.5.0"
 description = "Plot OpenMC geometry, interactive or static 2D slice plots."
 readme = "README.md"
 requires-python = ">=3.8"
@@ -21,19 +20,13 @@ classifiers = [
 dependencies = [
     "numpy>=1.21.1",
     "streamlit",
-    "plotly",
-    "openmc",
+    "plotly"
 ]
 dynamic = ["version"]
-
-[[tool.pip.index]]
-name = "shimwell-wheels"
-url = "https://shimwell.github.io/wheels"
 
 
 [tool.setuptools_scm]
 write_to = "src/openmc_geometry_plot/_version.py"
-fallback_version = "0.5.0"
 
 
 [project.optional-dependencies]
