@@ -370,6 +370,10 @@ def main():
             if 'zoom_region' not in st.session_state:
                 st.session_state.zoom_region = None
 
+            # Initialize current viewport range (needed for coordinate inversion on reversed y-axis)
+            if 'current_viewport' not in st.session_state:
+                st.session_state.current_viewport = None
+
             # Add help text about zoom functionality
             st.info("""
             🔍 **Interactive High-Resolution Zoom:**
@@ -396,22 +400,28 @@ def main():
                 x_max_zoom = x_range[1] / scale
 
                 # Y-axis is reversed in plotly for display
-                # The selection coordinates need to be inverted relative to the full range
-                # to account for the reversed display
+                # Only the FIRST zoom needs inversion (from full view to first zoom)
+                # All subsequent zooms work correctly without inversion
                 y_val_1 = y_range[0] / scale
                 y_val_2 = y_range[1] / scale
 
-                # Get the full y-axis range to invert against
-                full_y_min = plot_bottom
-                full_y_max = plot_top
-                full_y_center = (full_y_min + full_y_max) / 2
+                # Only invert on the first zoom (count == 1)
+                if st.session_state.zoom_count == 1:
+                    # First zoom: invert relative to the ORIGINAL full range
+                    full_y_min = plot_bottom
+                    full_y_max = plot_top
+                    full_y_center = (full_y_min + full_y_max) / 2
 
-                # Invert y-coordinates by flipping them around the center
-                y_val_1_inverted = 2 * full_y_center - y_val_1
-                y_val_2_inverted = 2 * full_y_center - y_val_2
+                    # Invert y-coordinates by flipping them around the center
+                    y_val_1_inverted = 2 * full_y_center - y_val_1
+                    y_val_2_inverted = 2 * full_y_center - y_val_2
 
-                y_min_zoom = min(y_val_1_inverted, y_val_2_inverted)
-                y_max_zoom = max(y_val_1_inverted, y_val_2_inverted)
+                    y_min_zoom = min(y_val_1_inverted, y_val_2_inverted)
+                    y_max_zoom = max(y_val_1_inverted, y_val_2_inverted)
+                else:
+                    # Subsequent zooms (count >= 2): use coordinates as-is
+                    y_min_zoom = min(y_val_1, y_val_2)
+                    y_max_zoom = max(y_val_1, y_val_2)
 
                 width_x_zoom = abs(x_max_zoom - x_min_zoom)
                 width_y_zoom = abs(y_max_zoom - y_min_zoom)
@@ -439,12 +449,20 @@ def main():
                 actual_origin = origin_zoom
                 actual_width = [width_x_zoom, width_y_zoom]
 
+                # Store the current viewport for the next zoom iteration
+                st.session_state.current_viewport = {
+                    'y_min': y_min_zoom,
+                    'y_max': y_max_zoom
+                }
+
                 # Calculate the resolution improvement factor
                 zoom_factor = (width_x * width_y) / (width_x_zoom * width_y_zoom)
 
                 st.success(f"🔍 Zoomed view (pixels distributed over {zoom_factor:.1f}x smaller area)")
                 if st.button("↩️ Reset to Full View"):
                     st.session_state.zoom_region = None
+                    st.session_state.current_viewport = None
+                    st.session_state.zoom_count = 0
                     st.rerun()
             else:
                 actual_pixels = pixels
@@ -477,10 +495,14 @@ def main():
 
             # Use on_select to capture box selections
             # Hide the modebar since those tools interfere with our zoom resolution feature
+            # Use a different key for each zoom level to clear selection state
+            if 'zoom_count' not in st.session_state:
+                st.session_state.zoom_count = 0
+            plot_key = f"plotly_plot_{st.session_state.zoom_count}"
             selection = st.plotly_chart(
                 plot,
                 use_container_width=True,
-                key="plotly_plot",
+                key=plot_key,
                 on_select="rerun",
                 selection_mode="box",
                 config={'displayModeBar': False}
@@ -513,6 +535,7 @@ def main():
                             'x_range': x_range,
                             'y_range': y_range
                         }
+                        st.session_state.zoom_count += 1
                         st.rerun()
 
             st.write("Model info")
