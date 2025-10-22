@@ -1,6 +1,3 @@
-# This CI will lauch a Docker image that contains all the dependencies required
-# within that image the pytest test suite is run
-
 name: CI with install
 
 on:
@@ -19,17 +16,24 @@ on:
 jobs:
   testing:
     runs-on: ubuntu-latest
-    container:
-      image: openmc/openmc:latest-dagmc
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: install package with tests
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.13'
+
+      - name: Install OpenMC with C++ library
+        run: |
+          # Install OpenMC with the compiled C++ library (needed for model.id_map())
+          python -m pip install --extra-index-url https://shimwell.github.io/wheels openmc
+
+      - name: Install package with test dependencies
         run: |
           pip install .[tests]
 
       - name: Run tests
         run: |
-          cd tests
-          pytest -v
+          pytest tests/ -v

@@ -6,10 +6,7 @@ import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend to avoid Tkinter threading issues
 import matplotlib.pyplot as plt
 import math
-from tempfile import TemporaryDirectory
 import warnings
-from PIL import Image
-import matplotlib.image as mpimg
 import plotly.graph_objects as go
 
 
@@ -555,128 +552,166 @@ def plot_plotly(
         y_min = (origin[y] - 0.5*width[1]) * axis_scaling_factor[axis_units]
         y_max = (origin[y] + 0.5*width[1]) * axis_scaling_factor[axis_units]
 
-        with TemporaryDirectory() as tmpdir:
-            model = openmc.Model()
-            model.geometry = geometry
-            if seed is not None:
-                model.settings.plot_seed = seed
+        # Use model.id_map() to get ID data directly (no file I/O needed!)
+        model = openmc.Model(geometry=geometry)
 
-            # Determine whether any materials contains macroscopic data and if
-            # so, set energy mode accordingly
-            for mat in geometry.get_all_materials().values():
-                if mat._macroscopic is not None:
-                    model.settings.energy_mode = 'multi-group'
-                    break
+        # Handle materials without nuclides
+        all_materials = geometry.get_all_materials()
+        materials_to_restore = {}
+        for mat_id, mat in all_materials.items():
+            if len(mat.nuclides) == 0 and mat._macroscopic is None:
+                materials_to_restore[mat_id] = mat.nuclides.copy()
+                mat.add_nuclide("He4", 1.0)
 
-            # Create plot object matching passed arguments
-            plot = openmc.Plot()
-            plot.origin = origin
-            plot.width = width
-            plot.pixels = pixels
-            plot.basis = basis
-            plot.color_by = color_by
+        # Set up minimal cross sections if not already configured
+        original_cross_sections = None
+        if 'cross_sections' not in openmc.config.keys():
+            package_dir = Path(__file__).parent
+            openmc.config["cross_sections"] = package_dir / "cross_sections.xml"
+        else:
+            original_cross_sections = openmc.config["cross_sections"]
 
-            if colors is not None:
-                
-                colors_based_on_ids = {}
-                for key, value in colors.items():
-                    colors_based_on_ids[key] = get_rgb_from_int(key.id)
-                plot.colors = colors_based_on_ids
+        try:
+            # Get ID map directly from OpenMC
+            id_map = model.id_map(
+                origin=origin,
+                width=width,
+                pixels=pixels,
+                basis=basis,
+            )
 
-            model.plots.append(plot)
+            # Extract the appropriate IDs based on color_by parameter
+            if color_by == 'material':
+                image_values = id_map[:, :, 2]  # Material IDs
+            else:  # color_by == 'cell'
+                image_values = id_map[:, :, 0]  # Cell IDs
 
-            # Run OpenMC in geometry plotting mode
-            model.plot_geometry(False, cwd=tmpdir, openmc_exec=openmc_exec)
+            # Convert negative IDs (void/undefined) to 0
+            image_values = np.where(image_values < 0, 0, image_values)
 
-            # Read image from file
-            img_path = Path(tmpdir) / f'plot_{plot.id}.png'
-            if not img_path.is_file():
-                img_path = img_path.with_suffix('.ppm')
-            # todo see if we can just read in image once
-            img = mpimg.imread(str(img_path))
-            image_values = Image.open(img_path)
-            image_values = np.asarray(image_values)
-            image_values = [
-                [get_int_from_rgb(inner_entry) for inner_entry in outer_entry]
-                for outer_entry in image_values
-            ]
+        finally:
+            # Finalize OpenMC library to clean up resources
+            try:
+                from openmc import lib as openmc_lib
+                if openmc_lib.is_initialized:
+                    openmc_lib.finalize()
+            except (ImportError, AttributeError):
+                pass
 
-            image_values = np.array(image_values)
-            image_values[image_values == 16777215] = 0
+            # Restore original materials
+            for mat_id in materials_to_restore:
+                all_materials[mat_id].nuclides.clear()
 
-            data = []
+            # Restore original cross sections config
+            if original_cross_sections is not None:
+                openmc.config["cross_sections"] = original_cross_sections
 
-            if outline:
+        # Build the plotly figure
+        data = []
 
-                data.append(
-                    go.Contour(
-                        z=image_values,
-                        contours_coloring='none',
-                        # colorscale=dcolorsc,
-                        showscale=False,
-                        x0=x_min,
-                        dx=abs(x_min - x_max) / (img.shape[0] - 1),
-                        y0=y_min,
-                        dy=abs(y_min - y_max) / (img.shape[1] - 1),
-                    )
+        if outline:
+            data.append(
+                go.Contour(
+                    z=image_values,
+                    contours_coloring='none',
+                    showscale=False,
+                    x0=x_min,
+                    dx=abs(x_min - x_max) / (image_values.shape[1] - 1),
+                    y0=y_min,
+                    dy=abs(y_min - y_max) / (image_values.shape[0] - 1),
                 )
-            
-            dcolorsc=[
-                [0, 'white'],
-            ]
+            )
 
-            rgb_cols = [f'rgb({c[0]},{c[1]},{c[2]})' for c in list(colors.values())]
-            mat_ids=[mat.id for mat in colors.keys()]
-            highest_mat_id = max(mat_ids)
-            for rgb_col, mat_id in zip(rgb_cols, mat_ids):
-                dcolorsc.append(((1/highest_mat_id)*mat_id,rgb_col))
+        # Build discrete color scale for cell/material IDs
+        # Handle empty colors dict (e.g., void-only geometry)
+        if colors and len(colors) > 0:
+            # Get all unique IDs from the image data
+            unique_ids = np.unique(image_values)
+            unique_ids = unique_ids[unique_ids != 0]  # Remove void (0)
+
+            # Build a mapping from ID to color
+            id_to_color = {}
+            for item, rgb in colors.items():
+                id_to_color[item.id] = f'rgb({rgb[0]},{rgb[1]},{rgb[2]})'
+
+            # Create discrete colorscale
+            # For discrete colors, we need to create steps where each ID gets exactly one color
+            all_ids = sorted(set(list(id_to_color.keys()) + [0]))  # Include 0 for void
+            max_id = max(all_ids) if all_ids else 1
+
+            # Build a stepped colorscale
+            dcolorsc = []
+            for i, id_val in enumerate(all_ids):
+                if id_val == 0:
+                    color = 'white'
+                else:
+                    color = id_to_color.get(id_val, 'rgb(128,128,128)')  # Gray for unmapped IDs
+
+                # Create discrete steps by adding the same color at boundaries
+                if i == 0:
+                    dcolorsc.append([id_val / max_id, color])
+                else:
+                    # Add a tiny step before this ID to keep previous color
+                    dcolorsc.append([(id_val - 0.0001) / max_id, prev_color])
+                    dcolorsc.append([id_val / max_id, color])
+
+                prev_color = color
+
+            # Add final point
+            dcolorsc.append([1.0, prev_color])
 
             cbar = dict(
-                        tick0= 0,
-                        xref="container",
-                        tickmode= 'array',
-                        tickvals= mat_ids,
-                        ticktext= mat_ids, # TODO add material names
-                        title=f'{color_by.title()} IDs',
-                    )
-
-            hovertext = [
-                [get_hover_text_from_id(inner_entry, color_by) for inner_entry in outer_entry]
-                for outer_entry in image_values
-            ]
-
-            data.append(
-                go.Heatmap(
-                    z=image_values,
-                    # showscale=True,
-                    colorscale=dcolorsc,
-                    x0=x_min,
-                    dx=abs(x_min - x_max) / (img.shape[0] - 1),
-                    y0=y_min,
-                    dy=abs(y_min - y_max) / (img.shape[1] - 1),
-                    colorbar= cbar,
-                    showscale=legend,
-                    hoverinfo='text',
-                    text=hovertext
-                )
+                tick0=0,
+                xref="container",
+                tickmode='array',
+                tickvals=sorted([id for id in id_to_color.keys()]),
+                ticktext=sorted([id for id in id_to_color.keys()]),  # TODO: add material/cell names
+                title=f'{color_by.title()} IDs',
             )
-            plot = go.Figure(data=data)
-           
+        else:
+            # Default colorbar for void-only or empty geometries
+            dcolorsc = [[0, 'white'], [1, 'white']]
+            cbar = dict(
+                title=f'{color_by.title()} IDs',
+            )
 
-            plot.update_layout(
-                xaxis={"title": xlabel},
-                # reversed autorange is required to avoid image needing rotation/flipping in plotly
-                yaxis={"title": ylabel, "autorange": "reversed"},
-                # title=title,
-                autosize=False,
-                height=800,
-                title=title
+        hovertext = [
+            [get_hover_text_from_id(inner_entry, color_by) for inner_entry in outer_entry]
+            for outer_entry in image_values
+        ]
+
+        data.append(
+            go.Heatmap(
+                z=image_values,
+                colorscale=dcolorsc,
+                x0=x_min,
+                dx=abs(x_min - x_max) / (image_values.shape[1] - 1),
+                y0=y_min,
+                dy=abs(y_min - y_max) / (image_values.shape[0] - 1),
+                colorbar=cbar,
+                showscale=legend,
+                hoverinfo='text',
+                text=hovertext,
+                zmin=0,
+                zmax=max(all_ids) if (colors and len(colors) > 0) else 1,
             )
-            plot.update_yaxes(
-                scaleanchor="x",
-                scaleratio=1,
-            )
-            return plot
+        )
+
+        plot = go.Figure(data=data)
+
+        plot.update_layout(
+            xaxis={"title": xlabel},
+            # reversed autorange is required to avoid image needing rotation/flipping in plotly
+            yaxis={"title": ylabel, "autorange": "reversed"},
+            autosize=False,
+            height=800,
+            title=title
+        )
+        plot.update_yaxes(
+            scaleanchor="x",
+            scaleratio=1,
+        )
+        return plot
 
 # patching openmc
 
