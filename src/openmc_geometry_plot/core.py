@@ -731,9 +731,9 @@ def plot_plotly(
         plot = go.Figure(data=data)
 
         plot.update_layout(
-            xaxis={"title": xlabel},
+            xaxis={"title": xlabel, "showgrid": False, "zeroline": False},
             # reversed autorange is required to avoid image needing rotation/flipping in plotly
-            yaxis={"title": ylabel, "autorange": "reversed"},
+            yaxis={"title": ylabel, "autorange": "reversed", "showgrid": False, "zeroline": False},
             autosize=False,
             height=800,
             title=title,
