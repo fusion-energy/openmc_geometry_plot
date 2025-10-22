@@ -22,8 +22,13 @@ dependencies = [
     "numpy>=1.21.1",
     "streamlit",
     "plotly",
+    "openmc",
 ]
 dynamic = ["version"]
+
+[[tool.pip.index]]
+name = "shimwell-wheels"
+url = "https://shimwell.github.io/wheels"
 
 
 [tool.setuptools_scm]
