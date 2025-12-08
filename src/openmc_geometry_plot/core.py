@@ -160,6 +160,8 @@ def plot_plotly(
     # legend_kwargs=_default_legend_kwargs,
     outline=False,
     title='',
+    show_overlaps=False,
+    overlap_color=None
 ):
         """Display a slice plot of the universe.
 
@@ -299,6 +301,7 @@ def plot_plotly(
                 width=width,
                 pixels=pixels,
                 basis=basis,
+                color_overlaps=show_overlaps,  # enables id_map to return -3 for overlaps
             )
 
             # Extract the appropriate IDs based on color_by parameter
@@ -307,8 +310,14 @@ def plot_plotly(
             else:  # color_by == 'cell'
                 image_values = id_map[:, :, 0]  # Cell IDs
 
-            # Convert negative IDs (void/undefined) to 0
-            image_values = np.where(image_values < 0, 0, image_values)
+            # Handle overlaps (-3) and convert other negative IDs (void/undefined) to 0
+            # We use -3 as a special marker for overlaps that will be colored separately
+            if show_overlaps:
+                # Keep -3 for overlaps, convert other negative values to 0
+                image_values = np.where((image_values < 0) & (image_values != -3), 0, image_values)
+            else:
+                # Convert all negative IDs to 0
+                image_values = np.where(image_values < 0, 0, image_values)
 
         finally:
             # Finalize OpenMC library to clean up resources
@@ -326,10 +335,6 @@ def plot_plotly(
             # Restore original cross sections config
             if original_cross_sections is not None:
                 openmc.config["cross_sections"] = original_cross_sections
-
-        # Flip image vertically for correct display orientation in Plotly
-        # Plotly heatmap shows first row at bottom, but we want first row at top
-        image_values_flipped = np.flipud(image_values)
 
         # Build the plotly figure
         data = []
@@ -352,16 +357,42 @@ def plot_plotly(
         if colors and len(colors) > 0:
             # Get all unique IDs from the image data
             unique_ids = np.unique(image_values)
-            unique_ids = unique_ids[unique_ids != 0]  # Remove void (0)
+            unique_ids = unique_ids[(unique_ids != 0) & (unique_ids != -3)]  # Remove void (0) and overlap (-3)
 
             # Build a mapping from ID to color
             id_to_color = {}
             for item, rgb in colors.items():
                 id_to_color[item.id] = f'rgb({rgb[0]},{rgb[1]},{rgb[2]})'
+            
+            # Add overlap color if enabled
+            if show_overlaps and overlap_color is not None:
+                id_to_color[-3] = f'rgb({overlap_color[0]},{overlap_color[1]},{overlap_color[2]})'
 
             # Create discrete colorscale
             # For discrete colors, we need to create steps where each ID gets exactly one color
             all_ids = sorted(set(list(id_to_color.keys()) + [0]))  # Include 0 for void
+            
+            # Remap -3 to a position in the colorscale
+            # We'll map it to a value beyond the max regular ID
+            max_regular_id = max([id for id in all_ids if id > 0]) if any(id > 0 for id in all_ids) else 1
+            overlap_display_value = max_regular_id + 1 if show_overlaps and -3 in all_ids else None
+            
+            # Create a remapped image for display purposes
+            image_values_display = image_values.copy()
+            if overlap_display_value is not None:
+                image_values_display = np.where(image_values == -3, overlap_display_value, image_values)
+            
+            # Flip image vertically for correct display orientation in Plotly
+            # Plotly heatmap shows first row at bottom, but we want first row at top
+            image_values_flipped = np.flipud(image_values_display)
+            
+            # Remove -3 from all_ids and add the remapped value if needed
+            if -3 in all_ids:
+                all_ids.remove(-3)
+                if overlap_display_value is not None:
+                    all_ids.append(overlap_display_value)
+                    all_ids = sorted(all_ids)
+            
             max_id = max(all_ids) if all_ids else 1
 
             # Build a stepped colorscale
@@ -369,6 +400,8 @@ def plot_plotly(
             for i, id_val in enumerate(all_ids):
                 if id_val == 0:
                     color = 'white'
+                elif show_overlaps and id_val == overlap_display_value:
+                    color = id_to_color.get(-3, 'rgb(255,0,0)')  # Red default for overlaps
                 else:
                     color = id_to_color.get(id_val, 'rgb(128,128,128)')  # Gray for unmapped IDs
 
@@ -385,29 +418,51 @@ def plot_plotly(
             # Add final point
             dcolorsc.append([1.0, prev_color])
 
-            # Calculate tick positions at the center of each discrete block
-            sorted_ids = sorted([id for id in id_to_color.keys()])
+            # Calculate tick positions and labels at the center of each discrete block
+            sorted_ids = sorted([id for id in id_to_color.keys() if id != -3])
             tick_positions = []
+            tick_labels = []
+            
             for id_val in sorted_ids:
+                # Map the ID to display value (handle overlap remapping)
+                display_id = overlap_display_value if (id_val == -3 and overlap_display_value is not None) else id_val
+                
                 # Find the midpoint of this ID's color block
-                id_index = all_ids.index(id_val)
+                try:
+                    id_index = all_ids.index(display_id)
+                    if id_index < len(all_ids) - 1:
+                        next_id = all_ids[id_index + 1]
+                        midpoint = (display_id + next_id) / 2
+                    else:
+                        midpoint = (display_id + max_id) / 2
+                    tick_positions.append(midpoint / max_id * max_id)
+                    tick_labels.append(str(id_val))
+                except ValueError:
+                    pass  # ID not in all_ids, skip it
+            
+            # Add overlap tick if present
+            if show_overlaps and overlap_display_value is not None and overlap_display_value in all_ids:
+                id_index = all_ids.index(overlap_display_value)
                 if id_index < len(all_ids) - 1:
                     next_id = all_ids[id_index + 1]
-                    midpoint = (id_val + next_id) / 2
+                    midpoint = (overlap_display_value + next_id) / 2
                 else:
-                    midpoint = (id_val + max_id) / 2
+                    midpoint = (overlap_display_value + max_id) / 2
                 tick_positions.append(midpoint / max_id * max_id)
+                tick_labels.append("Overlap")
 
             cbar = dict(
                 tick0=0,
                 xref="container",
                 tickmode='array',
                 tickvals=tick_positions,
-                ticktext=sorted_ids,  # TODO: add material/cell names
+                ticktext=tick_labels,
                 title=f'{color_by.title()} IDs',
             )
         else:
             # Default colorbar for void-only or empty geometries
+            # Still need to flip the image
+            image_values_flipped = np.flipud(image_values)
             dcolorsc = [[0, 'white'], [1, 'white']]
             cbar = dict(
                 title=f'{color_by.title()} IDs',
@@ -425,6 +480,11 @@ def plot_plotly(
                 original_row_idx = image_values.shape[0] - 1 - row_idx
                 cell_id = int(id_map[original_row_idx, col_idx, 0])
                 mat_id = int(id_map[original_row_idx, col_idx, 2])
+
+                # Check for overlap first
+                if show_overlaps and (cell_id == -3 or mat_id == -3):
+                    row_text.append("OVERLAP DETECTED")
+                    continue
 
                 # Handle negative IDs (void)
                 if cell_id < 0:

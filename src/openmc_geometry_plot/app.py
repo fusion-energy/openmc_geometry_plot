@@ -283,6 +283,25 @@ def main():
             key="outline",
             help="Allows an outline to be drawn around the cells or materials, select None for no outline",
         )
+        
+        show_overlaps = st.sidebar.selectbox(
+            label="Show overlaps",
+            options=(True, False),
+            index=1,
+            key="show_overlaps",
+            help="Highlight geometry overlaps in a special color. Requires OpenMC with overlap detection support.",
+        )
+        
+        if show_overlaps:
+            overlap_color_hex = st.sidebar.color_picker(
+                "Color for overlaps",
+                key="overlap_color",
+                value="#FF0000",  # Red by default
+            )
+            overlap_color_hex_clean = overlap_color_hex.lstrip("#")
+            overlap_color = tuple(int(overlap_color_hex_clean[i : i + 2], 16) for i in (0, 2, 4))
+        else:
+            overlap_color = None
 
         if color_by == "material":
             num_items = len(set_mat_ids)
@@ -474,7 +493,9 @@ def main():
                 legend=legend,
                 axis_units=axis_units,
                 outline=outline,
-                title=title
+                title=title,
+                show_overlaps=show_overlaps,
+                overlap_color=overlap_color
             )
 
             plot.write_html("openmc_plot_geometry_image.html")
