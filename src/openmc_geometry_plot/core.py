@@ -77,29 +77,6 @@ def get_side_extent(self, side: str, view_direction: str, bounding_box=None):
     return avail_extents[(side, view_direction)]
 
 
-def get_mpl_plot_extent(self, view_direction):
-    """Returns the (x_min, x_max, y_min, y_max) of the bounding box. The
-    view_direction is taken into account and can be set using
-    openmc.Geometry.view_direction property is taken into account and can be
-    set to 'x', 'y' or 'z'."""
-
-    bb = self.bounding_box
-
-    x_min = self.get_side_extent(
-        side="left", view_direction=view_direction, bounding_box=bb
-    )
-    x_max = self.get_side_extent(
-        side="right", view_direction=view_direction, bounding_box=bb
-    )
-    y_min = self.get_side_extent(
-        side="bottom", view_direction=view_direction, bounding_box=bb
-    )
-    y_max = self.get_side_extent(
-        side="top", view_direction=view_direction, bounding_box=bb
-    )
-
-    return (x_min, x_max, y_min, y_max)
-
 
 def get_mid_slice_value(self, view_direction, bounding_box=None):
     """Returns the position of the center of the mesh. The view_direction is
@@ -169,78 +146,20 @@ def get_dagmc_universe(self):
             return univ
 
 
-def _calculate_plot_parameters(
-    geometry,
-    view_direction: str,
-    slice_value: typing.Optional[float],
-    plot_left: typing.Optional[float],
-    plot_right: typing.Optional[float],
-    plot_bottom: typing.Optional[float],
-    plot_top: typing.Optional[float],
-):
-    """Helper function to calculate origin, width, and basis for plotting.
-
-    Args:
-        geometry: OpenMC Geometry object
-        view_direction: 'x', 'y', or 'z'
-        slice_value: Position along the view direction
-        plot_left: Left edge of plot
-        plot_right: Right edge of plot
-        plot_bottom: Bottom edge of plot
-        plot_top: Top edge of plot
-
-    Returns:
-        tuple: (origin, width, basis) suitable for model.id_map()
-    """
-    bb = geometry.bounding_box
-
-    # Get plot extent
-    plot_left, plot_right, plot_bottom, plot_top, slice_value = geometry.get_plot_extent(
-        plot_left, plot_right, plot_bottom, plot_top, slice_value, bb, view_direction
-    )
-
-    # Calculate center and dimensions
-    plot_x = (plot_left + plot_right) / 2
-    plot_y = (plot_top + plot_bottom) / 2
-    width_x = abs(plot_left - plot_right)
-    width_y = abs(plot_top - plot_bottom)
-
-    # Map view_direction to basis and origin
-    if view_direction == "z":
-        basis = "xy"
-        origin = (plot_x, plot_y, slice_value)
-        width = (width_x, width_y)
-    elif view_direction == "x":
-        basis = "yz"
-        origin = (slice_value, plot_x, plot_y)
-        width = (width_x, width_y)
-    elif view_direction == "y":
-        basis = "xz"
-        origin = (plot_x, slice_value, plot_y)
-        width = (width_x, width_y)
-    else:
-        raise ValueError(f'view_direction must be "x", "y" or "z", not {view_direction}')
-
-    return origin, width, basis
-
-
 def plot_plotly(
     geometry,
+    materials,
     origin=None,
     width=None,
     pixels=40000,
     basis='xy',
     color_by='cell',
     colors=None,
-    seed=None,
-    openmc_exec='openmc',
-    axes=None,
     legend=False,
     axis_units='cm',
     # legend_kwargs=_default_legend_kwargs,
     outline=False,
     title='',
-    **kwargs
 ):
         """Display a slice plot of the universe.
 
@@ -355,7 +274,7 @@ def plot_plotly(
         y_max = (origin[y] + 0.5*width[1]) * axis_scaling_factor[axis_units]
 
         # Use model.id_map() to get ID data directly (no file I/O needed!)
-        model = openmc.Model(geometry=geometry)
+        model = openmc.Model(geometry=geometry, materials=materials)
 
         # Handle materials without nuclides
         all_materials = geometry.get_all_materials()
@@ -408,19 +327,23 @@ def plot_plotly(
             if original_cross_sections is not None:
                 openmc.config["cross_sections"] = original_cross_sections
 
+        # Flip image vertically for correct display orientation in Plotly
+        # Plotly heatmap shows first row at bottom, but we want first row at top
+        image_values_flipped = np.flipud(image_values)
+
         # Build the plotly figure
         data = []
 
         if outline:
             data.append(
                 go.Contour(
-                    z=image_values,
+                    z=image_values_flipped,
                     contours_coloring='none',
                     showscale=False,
                     x0=x_min,
-                    dx=abs(x_min - x_max) / (image_values.shape[1] - 1),
+                    dx=abs(x_min - x_max) / (image_values_flipped.shape[1] - 1),
                     y0=y_min,
-                    dy=abs(y_min - y_max) / (image_values.shape[0] - 1),
+                    dy=abs(y_min - y_max) / (image_values_flipped.shape[0] - 1),
                 )
             )
 
@@ -495,11 +418,13 @@ def plot_plotly(
         all_materials = geometry.get_all_materials()
 
         hovertext = []
-        for row_idx, row in enumerate(image_values):
+        for row_idx, row in enumerate(image_values_flipped):
             row_text = []
             for col_idx, _ in enumerate(row):
-                cell_id = int(id_map[row_idx, col_idx, 0])
-                mat_id = int(id_map[row_idx, col_idx, 2])
+                # Account for the flip when accessing id_map
+                original_row_idx = image_values.shape[0] - 1 - row_idx
+                cell_id = int(id_map[original_row_idx, col_idx, 0])
+                mat_id = int(id_map[original_row_idx, col_idx, 2])
 
                 # Handle negative IDs (void)
                 if cell_id < 0:
@@ -535,12 +460,12 @@ def plot_plotly(
 
         data.append(
             go.Heatmap(
-                z=image_values,
+                z=image_values_flipped,
                 colorscale=dcolorsc,
                 x0=x_min,
-                dx=abs(x_min - x_max) / (image_values.shape[1] - 1),
+                dx=abs(x_min - x_max) / (image_values_flipped.shape[1] - 1),
                 y0=y_min,
-                dy=abs(y_min - y_max) / (image_values.shape[0] - 1),
+                dy=abs(y_min - y_max) / (image_values_flipped.shape[0] - 1),
                 colorbar=cbar,
                 showscale=legend,
                 hoverinfo='text',
@@ -554,8 +479,7 @@ def plot_plotly(
 
         plot.update_layout(
             xaxis={"title": xlabel, "showgrid": False, "zeroline": False},
-            # reversed autorange is required to avoid image needing rotation/flipping in plotly
-            yaxis={"title": ylabel, "autorange": "reversed", "showgrid": False, "zeroline": False},
+            yaxis={"title": ylabel, "showgrid": False, "zeroline": False},
             autosize=False,
             height=800,
             title=title,
@@ -569,6 +493,7 @@ def plot_plotly(
 
         return plot
 
+
 # patching openmc
 
 openmc.Geometry.get_dagmc_universe = get_dagmc_universe
@@ -576,7 +501,6 @@ openmc.Geometry.is_geometry_dagmc = is_geometry_dagmc
 openmc.Geometry.get_dagmc_filepath = get_dagmc_filepath
 openmc.Geometry.get_plot_extent = get_plot_extent
 openmc.Geometry.get_side_extent = get_side_extent
-openmc.Geometry.get_mpl_plot_extent = get_mpl_plot_extent
 openmc.Geometry.get_mid_slice_value = get_mid_slice_value
 openmc.Geometry.get_axis_labels = get_axis_labels
 openmc.Geometry.find_cell_id = find_cell_id

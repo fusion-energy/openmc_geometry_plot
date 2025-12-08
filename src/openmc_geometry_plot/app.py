@@ -8,6 +8,14 @@ def save_uploadedfile(uploadedfile):
     return st.success(f"Saved File to {uploadedfile.name}")
 
 
+def make_placeholder_materials(set_mat_names, set_mat_ids) :
+    import openmc
+    materials = openmc.Materials()
+    for name, id in zip(set_mat_names, set_mat_ids):
+        mat = openmc.Material(name=str(name), material_id=id)
+        mat.add_nuclide("He4", 1.0)
+        materials.append(mat)
+    return materials
 
 def header():
     """This section writes out the page header common to all tabs"""
@@ -50,6 +58,8 @@ def main():
         st.markdown(title_2, unsafe_allow_html=True)
 
         title_3 = '<center><p> Not got geometry files handy? Right mouse 🖱️ click and save this link <a href="https://raw.githubusercontent.com/fusion-energy/openmc_geometry_plot/31be0556f3f34c102cab3de094df08f48acad5ca/examples/csg_tokamak/geometry.xml" download>geometry.xml</a></p></center>'
+        st.markdown(title_3, unsafe_allow_html=True)
+        title_3 = '<center><p> Not got DAGMC files handy? Right mouse 🖱️ click and save this link <a href="https://github.com/fusion-energy/neutronics-workshop/raw/refs/heads/main/tasks/task_18_CAD_mesh_fast_flux/dagmc.h5m" download>dagmc.h5m</a></p></center>'
         st.markdown(title_3, unsafe_allow_html=True)
 
     # DAGMC route
@@ -159,7 +169,7 @@ def main():
         # Lazy import heavy libraries only when geometry is loaded
         import numpy as np
         import colorsys
-
+        
         print("geometry is set to something so attempting to plot")
         bb = my_geometry.bounding_box
         print(f'bounding box {bb}')
@@ -331,7 +341,7 @@ def main():
         title = st.sidebar.text_input(
             "Plot title",
             help="Optionally set your own title for the plot",
-            value=f"Slice through OpenMC geometry at {slice_axis}={slice_value}",
+            value=f"Slice through OpenMC geometry on {basis} axes at {slice_axis}={slice_value}",
         )
 
         if (
@@ -369,10 +379,10 @@ def main():
             # Initialize zoom state
             if 'zoom_region' not in st.session_state:
                 st.session_state.zoom_region = None
-
-            # Initialize current viewport range (needed for coordinate inversion on reversed y-axis)
-            if 'current_viewport' not in st.session_state:
-                st.session_state.current_viewport = None
+            
+            # Track the current view bounds for proper coordinate transformation on subsequent zooms
+            if 'current_bounds' not in st.session_state:
+                st.session_state.current_bounds = None
 
             # Add help text about zoom functionality
             st.info("""
@@ -395,33 +405,15 @@ def main():
                 axis_scaling_factor = {'km': 0.00001, 'm': 0.01, 'cm': 1, 'mm': 10}
                 scale = axis_scaling_factor[axis_units]
 
-                # Convert plot coordinates to cm
-                x_min_zoom = x_range[0] / scale
-                x_max_zoom = x_range[1] / scale
-
-                # Y-axis is reversed in plotly for display
-                # Only the FIRST zoom needs inversion (from full view to first zoom)
-                # All subsequent zooms work correctly without inversion
-                y_val_1 = y_range[0] / scale
-                y_val_2 = y_range[1] / scale
-
-                # Only invert on the first zoom (count == 1)
-                if st.session_state.zoom_count == 1:
-                    # First zoom: invert relative to the ORIGINAL full range
-                    full_y_min = plot_bottom
-                    full_y_max = plot_top
-                    full_y_center = (full_y_min + full_y_max) / 2
-
-                    # Invert y-coordinates by flipping them around the center
-                    y_val_1_inverted = 2 * full_y_center - y_val_1
-                    y_val_2_inverted = 2 * full_y_center - y_val_2
-
-                    y_min_zoom = min(y_val_1_inverted, y_val_2_inverted)
-                    y_max_zoom = max(y_val_1_inverted, y_val_2_inverted)
-                else:
-                    # Subsequent zooms (count >= 2): use coordinates as-is
-                    y_min_zoom = min(y_val_1, y_val_2)
-                    y_max_zoom = max(y_val_1, y_val_2)
+                # Plotly gives us coordinates in the display coordinate system
+                # Since y-axis has autorange="reversed", the visual display is flipped,
+                # but the coordinate values themselves are NOT flipped
+                # We just need to convert from display units to cm
+                # Note: ranges might be in reverse order depending on drag direction, so use min/max
+                x_min_zoom = min(x_range[0], x_range[1]) / scale
+                x_max_zoom = max(x_range[0], x_range[1]) / scale
+                y_min_zoom = min(y_range[0], y_range[1]) / scale
+                y_max_zoom = max(y_range[0], y_range[1]) / scale
 
                 width_x_zoom = abs(x_max_zoom - x_min_zoom)
                 width_y_zoom = abs(y_max_zoom - y_min_zoom)
@@ -442,17 +434,18 @@ def main():
                 elif basis == 'yz':
                     # x-axis = Y coordinate, y-axis = Z coordinate
                     origin_zoom = (origin[0], origin_x_zoom, origin_y_zoom)
-
-
+                
                 # Use the same pixel count but for a smaller region (higher resolution)
                 actual_pixels = pixels
                 actual_origin = origin_zoom
                 actual_width = [width_x_zoom, width_y_zoom]
-
-                # Store the current viewport for the next zoom iteration
-                st.session_state.current_viewport = {
-                    'y_min': y_min_zoom,
-                    'y_max': y_max_zoom
+                
+                # Update current bounds for next zoom iteration (no longer needed but keeping for potential future use)
+                st.session_state.current_bounds = {
+                    'plot_left': x_min_zoom,
+                    'plot_right': x_max_zoom,
+                    'plot_bottom': y_min_zoom,
+                    'plot_top': y_max_zoom
                 }
 
                 # Calculate the resolution improvement factor
@@ -461,7 +454,7 @@ def main():
                 st.success(f"🔍 Zoomed view (pixels distributed over {zoom_factor:.1f}x smaller area)")
                 if st.button("↩️ Reset to Full View"):
                     st.session_state.zoom_region = None
-                    st.session_state.current_viewport = None
+                    st.session_state.current_bounds = None
                     st.session_state.zoom_count = 0
                     st.rerun()
             else:
@@ -470,7 +463,8 @@ def main():
                 actual_width = [width_x, width_y]
 
             plot = plot_plotly(
-                my_geometry,
+                geometry=my_geometry,
+                materials = make_placeholder_materials(set_mat_names, set_mat_ids),
                 origin=actual_origin,
                 width=actual_width,
                 pixels=actual_pixels,
@@ -501,7 +495,7 @@ def main():
             plot_key = f"plotly_plot_{st.session_state.zoom_count}"
             selection = st.plotly_chart(
                 plot,
-                use_container_width=True,
+                width='stretch',
                 key=plot_key,
                 on_select="rerun",
                 selection_mode="box",
