@@ -148,21 +148,18 @@ def get_dagmc_universe(self):
 
 def plot_plotly(
     geometry,
+    materials,
     origin=None,
     width=None,
     pixels=40000,
     basis='xy',
     color_by='cell',
     colors=None,
-    seed=None,
-    openmc_exec='openmc',
-    axes=None,
     legend=False,
     axis_units='cm',
     # legend_kwargs=_default_legend_kwargs,
     outline=False,
     title='',
-    **kwargs
 ):
         """Display a slice plot of the universe.
 
@@ -277,7 +274,7 @@ def plot_plotly(
         y_max = (origin[y] + 0.5*width[1]) * axis_scaling_factor[axis_units]
 
         # Use model.id_map() to get ID data directly (no file I/O needed!)
-        model = openmc.Model(geometry=geometry)
+        model = openmc.Model(geometry=geometry, materials=materials)
 
         # Handle materials without nuclides
         all_materials = geometry.get_all_materials()
@@ -495,6 +492,7 @@ def plot_plotly(
         )
 
         return plot
+
 
 # patching openmc
 

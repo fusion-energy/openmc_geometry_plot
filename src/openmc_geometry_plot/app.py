@@ -8,6 +8,14 @@ def save_uploadedfile(uploadedfile):
     return st.success(f"Saved File to {uploadedfile.name}")
 
 
+def make_placeholder_materials(set_mat_names, set_mat_ids) :
+    import openmc
+    materials = openmc.Materials()
+    for name, id in zip(set_mat_names, set_mat_ids):
+        mat = openmc.Material(name=str(name), material_id=id)
+        mat.add_nuclide("He4", 1.0)
+        materials.append(mat)
+    return materials
 
 def header():
     """This section writes out the page header common to all tabs"""
@@ -161,7 +169,7 @@ def main():
         # Lazy import heavy libraries only when geometry is loaded
         import numpy as np
         import colorsys
-
+        
         print("geometry is set to something so attempting to plot")
         bb = my_geometry.bounding_box
         print(f'bounding box {bb}')
@@ -333,7 +341,7 @@ def main():
         title = st.sidebar.text_input(
             "Plot title",
             help="Optionally set your own title for the plot",
-            value=f"Slice through OpenMC geometry at {slice_axis}={slice_value}",
+            value=f"Slice through OpenMC geometry on {basis} axes at {slice_axis}={slice_value}",
         )
 
         if (
@@ -455,7 +463,8 @@ def main():
                 actual_width = [width_x, width_y]
 
             plot = plot_plotly(
-                my_geometry,
+                geometry=my_geometry,
+                materials = make_placeholder_materials(set_mat_names, set_mat_ids),
                 origin=actual_origin,
                 width=actual_width,
                 pixels=actual_pixels,
