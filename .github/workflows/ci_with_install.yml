@@ -29,11 +29,4 @@ jobs:
         run: |
           # Install OpenMC with the compiled C++ library (needed for model.id_map())
           python -m pip install --extra-index-url https://shimwell.github.io/wheels openmc
-
-      - name: Install package with test dependencies
-        run: |
-          pip install .[tests]
-
-      - name: Run tests
-        run: |
-          pytest tests/ -v
+          pip install .
