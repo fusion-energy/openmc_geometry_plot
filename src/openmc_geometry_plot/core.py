@@ -224,235 +224,6 @@ def _calculate_plot_parameters(
     return origin, width, basis
 
 
-def get_slice_of_material_ids(
-    self,
-    view_direction: str,
-    slice_value: typing.Optional[float] = None,
-    plot_top: typing.Optional[float] = None,
-    plot_bottom: typing.Optional[float] = None,
-    plot_left: typing.Optional[float] = None,
-    plot_right: typing.Optional[float] = None,
-    pixels_across: int = 500,
-    verbose: bool = False,
-):
-    """Returns a grid of material IDs for each mesh voxel on the slice. This
-    can be passed directly to plotting functions like Matplotlib imshow. 0
-    values represent void space or undefined space.
-
-    Args:
-        view_direction: 'x', 'y', or 'z'
-        slice_value: Position along the view direction axis
-        plot_top: Top edge of the plot region
-        plot_bottom: Bottom edge of the plot region
-        plot_left: Left edge of the plot region
-        plot_right: Right edge of the plot region
-        pixels_across: Number of pixels in the horizontal direction
-        verbose: Print verbose output
-
-    Returns:
-        list: 2D list of material IDs
-    """
-    # Calculate plot parameters
-    origin, width, basis = _calculate_plot_parameters(
-        self, view_direction, slice_value,
-        plot_left, plot_right, plot_bottom, plot_top
-    )
-
-    # Calculate pixel dimensions maintaining aspect ratio
-    aspect_ratio = width[1] / width[0]
-    pixels_up = int(pixels_across * aspect_ratio)
-
-    if verbose:
-        print(f"Generating material ID map: origin={origin}, width={width}, basis={basis}, pixels=({pixels_across}, {pixels_up})")
-
-    # Create a model from the geometry
-    # Handle DAGMC geometries which need materials created from material names
-    if self.is_geometry_dagmc():
-        dag_universe = self.get_dagmc_universe()
-        mat_names = dag_universe.material_names
-
-        # Create dummy materials for DAGMC
-        all_materials_list = []
-        for i, mat_name in enumerate(mat_names):
-            mat = openmc.Material(name=mat_name)
-            mat.add_nuclide("He4", 1.0)
-            all_materials_list.append(mat)
-
-        model = openmc.Model(geometry=self)
-        model.materials = openmc.Materials(all_materials_list)
-        materials_to_restore = {}
-        all_materials = {}  # Empty for DAGMC
-    else:
-        # For regular geometries, add dummy nuclides to empty materials
-        all_materials = self.get_all_materials()
-        materials_to_restore = {}
-        for mat_id, mat in all_materials.items():
-            if len(mat.nuclides) == 0 and mat._macroscopic is None:
-                materials_to_restore[mat_id] = mat.nuclides.copy()
-                mat.add_nuclide("He4", 1.0)
-
-        model = openmc.Model(geometry=self)
-
-    # Set up minimal cross sections if not already configured
-    original_cross_sections = None
-    if 'cross_sections' not in openmc.config.keys():
-        package_dir = Path(__file__).parent
-        openmc.config["cross_sections"] = package_dir / "cross_sections.xml"
-    else:
-        original_cross_sections = openmc.config["cross_sections"]
-
-    try:
-        # Use the new id_map API to get material IDs
-        id_map = model.id_map(
-            origin=origin,
-            width=width,
-            pixels=(pixels_across, pixels_up),
-            basis=basis,
-        )
-    finally:
-        # Finalize OpenMC library to clean up resources
-        try:
-            from openmc import lib as openmc_lib
-            if openmc_lib.is_initialized:
-                openmc_lib.finalize()
-        except (ImportError, AttributeError):
-            pass  # OpenMC lib not available or not initialized
-
-        # Restore original materials
-        for mat_id in materials_to_restore:
-            all_materials[mat_id].nuclides.clear()
-
-        # Restore original cross sections config
-        if original_cross_sections is not None:
-            openmc.config["cross_sections"] = original_cross_sections
-
-    # Extract material IDs (index 2 in the last dimension)
-    # id_map shape is (vertical_pixels, horizontal_pixels, 3)
-    # where last dimension is [cell_id, cell_instance, material_id]
-    material_ids = id_map[:, :, 2]
-
-    # Convert negative IDs (void/undefined) to 0 for backward compatibility
-    # OpenMC returns -1 for void and -2 for undefined regions
-    material_ids = np.where(material_ids < 0, 0, material_ids)
-
-    return material_ids.tolist()
-
-
-def get_slice_of_cell_ids(
-    self,
-    view_direction: str,
-    slice_value: typing.Optional[float] = None,
-    plot_top: typing.Optional[float] = None,
-    plot_bottom: typing.Optional[float] = None,
-    plot_left: typing.Optional[float] = None,
-    plot_right: typing.Optional[float] = None,
-    pixels_across: int = 500,
-    verbose: bool = False,
-):
-    """Returns a grid of cell IDs for each mesh voxel on the slice. This
-    can be passed directly to plotting functions like Matplotlib imshow. 0
-    values represent void space or undefined space.
-
-    Args:
-        view_direction: 'x', 'y', or 'z'
-        slice_value: Position along the view direction axis
-        plot_top: Top edge of the plot region
-        plot_bottom: Bottom edge of the plot region
-        plot_left: Left edge of the plot region
-        plot_right: Right edge of the plot region
-        pixels_across: Number of pixels in the horizontal direction
-        verbose: Print verbose output
-
-    Returns:
-        list: 2D list of cell IDs
-    """
-    # Calculate plot parameters
-    origin, width, basis = _calculate_plot_parameters(
-        self, view_direction, slice_value,
-        plot_left, plot_right, plot_bottom, plot_top
-    )
-
-    # Calculate pixel dimensions maintaining aspect ratio
-    aspect_ratio = width[1] / width[0]
-    pixels_up = int(pixels_across * aspect_ratio)
-
-    if verbose:
-        print(f"Generating cell ID map: origin={origin}, width={width}, basis={basis}, pixels=({pixels_across}, {pixels_up})")
-
-    # Create a model from the geometry
-    # Handle DAGMC geometries which need materials created from material names
-    if self.is_geometry_dagmc():
-        dag_universe = self.get_dagmc_universe()
-        mat_names = dag_universe.material_names
-
-        # Create dummy materials for DAGMC
-        all_materials_list = []
-        for i, mat_name in enumerate(mat_names):
-            mat = openmc.Material(name=mat_name)
-            mat.add_nuclide("He4", 1.0)
-            all_materials_list.append(mat)
-
-        model = openmc.Model(geometry=self)
-        model.materials = openmc.Materials(all_materials_list)
-        materials_to_restore = {}
-        all_materials = {}  # Empty for DAGMC
-    else:
-        # For regular geometries, add dummy nuclides to empty materials
-        all_materials = self.get_all_materials()
-        materials_to_restore = {}
-        for mat_id, mat in all_materials.items():
-            if len(mat.nuclides) == 0 and mat._macroscopic is None:
-                materials_to_restore[mat_id] = mat.nuclides.copy()
-                mat.add_nuclide("He4", 1.0)
-
-        model = openmc.Model(geometry=self)
-
-    # Set up minimal cross sections if not already configured
-    original_cross_sections = None
-    if 'cross_sections' not in openmc.config.keys():
-        package_dir = Path(__file__).parent
-        openmc.config["cross_sections"] = package_dir / "cross_sections.xml"
-    else:
-        original_cross_sections = openmc.config["cross_sections"]
-
-    try:
-        # Use the new id_map API to get cell IDs
-        id_map = model.id_map(
-            origin=origin,
-            width=width,
-            pixels=(pixels_across, pixels_up),
-            basis=basis,
-        )
-    finally:
-        # Finalize OpenMC library to clean up resources
-        try:
-            from openmc import lib as openmc_lib
-            if openmc_lib.is_initialized:
-                openmc_lib.finalize()
-        except (ImportError, AttributeError):
-            pass  # OpenMC lib not available or not initialized
-
-        # Restore original materials
-        for mat_id in materials_to_restore:
-            all_materials[mat_id].nuclides.clear()
-
-        # Restore original cross sections config
-        if original_cross_sections is not None:
-            openmc.config["cross_sections"] = original_cross_sections
-
-    # Extract cell IDs (index 0 in the last dimension)
-    # id_map shape is (vertical_pixels, horizontal_pixels, 3)
-    # where last dimension is [cell_id, cell_instance, material_id]
-    cell_ids = id_map[:, :, 0]
-
-    # Convert negative IDs (void/undefined) to 0 for backward compatibility
-    # OpenMC returns -1 for void and -2 for undefined regions
-    cell_ids = np.where(cell_ids < 0, 0, cell_ids)
-
-    return cell_ids.tolist()
-
-
-
 def plot_plotly(
     geometry,
     origin=None,
@@ -691,12 +462,25 @@ def plot_plotly(
             # Add final point
             dcolorsc.append([1.0, prev_color])
 
+            # Calculate tick positions at the center of each discrete block
+            sorted_ids = sorted([id for id in id_to_color.keys()])
+            tick_positions = []
+            for id_val in sorted_ids:
+                # Find the midpoint of this ID's color block
+                id_index = all_ids.index(id_val)
+                if id_index < len(all_ids) - 1:
+                    next_id = all_ids[id_index + 1]
+                    midpoint = (id_val + next_id) / 2
+                else:
+                    midpoint = (id_val + max_id) / 2
+                tick_positions.append(midpoint / max_id * max_id)
+
             cbar = dict(
                 tick0=0,
                 xref="container",
                 tickmode='array',
-                tickvals=sorted([id for id in id_to_color.keys()]),
-                ticktext=sorted([id for id in id_to_color.keys()]),  # TODO: add material/cell names
+                tickvals=tick_positions,
+                ticktext=sorted_ids,  # TODO: add material/cell names
                 title=f'{color_by.title()} IDs',
             )
         else:
@@ -795,8 +579,6 @@ openmc.Geometry.get_side_extent = get_side_extent
 openmc.Geometry.get_mpl_plot_extent = get_mpl_plot_extent
 openmc.Geometry.get_mid_slice_value = get_mid_slice_value
 openmc.Geometry.get_axis_labels = get_axis_labels
-openmc.Geometry.get_slice_of_material_ids = get_slice_of_material_ids
-openmc.Geometry.get_slice_of_cell_ids = get_slice_of_cell_ids
 openmc.Geometry.find_cell_id = find_cell_id
 
 
