@@ -408,19 +408,23 @@ def plot_plotly(
             if original_cross_sections is not None:
                 openmc.config["cross_sections"] = original_cross_sections
 
+        # Flip image vertically for correct display orientation in Plotly
+        # Plotly heatmap shows first row at bottom, but we want first row at top
+        image_values_flipped = np.flipud(image_values)
+
         # Build the plotly figure
         data = []
 
         if outline:
             data.append(
                 go.Contour(
-                    z=image_values,
+                    z=image_values_flipped,
                     contours_coloring='none',
                     showscale=False,
                     x0=x_min,
-                    dx=abs(x_min - x_max) / (image_values.shape[1] - 1),
+                    dx=abs(x_min - x_max) / (image_values_flipped.shape[1] - 1),
                     y0=y_min,
-                    dy=abs(y_min - y_max) / (image_values.shape[0] - 1),
+                    dy=abs(y_min - y_max) / (image_values_flipped.shape[0] - 1),
                 )
             )
 
@@ -495,11 +499,13 @@ def plot_plotly(
         all_materials = geometry.get_all_materials()
 
         hovertext = []
-        for row_idx, row in enumerate(image_values):
+        for row_idx, row in enumerate(image_values_flipped):
             row_text = []
             for col_idx, _ in enumerate(row):
-                cell_id = int(id_map[row_idx, col_idx, 0])
-                mat_id = int(id_map[row_idx, col_idx, 2])
+                # Account for the flip when accessing id_map
+                original_row_idx = image_values.shape[0] - 1 - row_idx
+                cell_id = int(id_map[original_row_idx, col_idx, 0])
+                mat_id = int(id_map[original_row_idx, col_idx, 2])
 
                 # Handle negative IDs (void)
                 if cell_id < 0:
@@ -535,12 +541,12 @@ def plot_plotly(
 
         data.append(
             go.Heatmap(
-                z=image_values,
+                z=image_values_flipped,
                 colorscale=dcolorsc,
                 x0=x_min,
-                dx=abs(x_min - x_max) / (image_values.shape[1] - 1),
+                dx=abs(x_min - x_max) / (image_values_flipped.shape[1] - 1),
                 y0=y_min,
-                dy=abs(y_min - y_max) / (image_values.shape[0] - 1),
+                dy=abs(y_min - y_max) / (image_values_flipped.shape[0] - 1),
                 colorbar=cbar,
                 showscale=legend,
                 hoverinfo='text',
@@ -554,8 +560,7 @@ def plot_plotly(
 
         plot.update_layout(
             xaxis={"title": xlabel, "showgrid": False, "zeroline": False},
-            # reversed autorange is required to avoid image needing rotation/flipping in plotly
-            yaxis={"title": ylabel, "autorange": "reversed", "showgrid": False, "zeroline": False},
+            yaxis={"title": ylabel, "showgrid": False, "zeroline": False},
             autosize=False,
             height=800,
             title=title,

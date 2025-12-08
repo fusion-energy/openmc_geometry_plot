@@ -369,10 +369,10 @@ def main():
             # Initialize zoom state
             if 'zoom_region' not in st.session_state:
                 st.session_state.zoom_region = None
-
-            # Initialize current viewport range (needed for coordinate inversion on reversed y-axis)
-            if 'current_viewport' not in st.session_state:
-                st.session_state.current_viewport = None
+            
+            # Track the current view bounds for proper coordinate transformation on subsequent zooms
+            if 'current_bounds' not in st.session_state:
+                st.session_state.current_bounds = None
 
             # Add help text about zoom functionality
             st.info("""
@@ -395,39 +395,30 @@ def main():
                 axis_scaling_factor = {'km': 0.00001, 'm': 0.01, 'cm': 1, 'mm': 10}
                 scale = axis_scaling_factor[axis_units]
 
-                # Convert plot coordinates to cm
-                x_min_zoom = x_range[0] / scale
-                x_max_zoom = x_range[1] / scale
+                # Debug output
+                st.write("DEBUG INFO:")
+                st.write(f"Selection from Plotly: x_range={x_range}, y_range={y_range}")
+                st.write(f"Scale factor: {scale}, axis_units: {axis_units}")
 
-                # Y-axis is reversed in plotly for display
-                # Only the FIRST zoom needs inversion (from full view to first zoom)
-                # All subsequent zooms work correctly without inversion
-                y_val_1 = y_range[0] / scale
-                y_val_2 = y_range[1] / scale
+                # Plotly gives us coordinates in the display coordinate system
+                # Since y-axis has autorange="reversed", the visual display is flipped,
+                # but the coordinate values themselves are NOT flipped
+                # We just need to convert from display units to cm
+                # Note: ranges might be in reverse order depending on drag direction, so use min/max
+                x_min_zoom = min(x_range[0], x_range[1]) / scale
+                x_max_zoom = max(x_range[0], x_range[1]) / scale
+                y_min_zoom = min(y_range[0], y_range[1]) / scale
+                y_max_zoom = max(y_range[0], y_range[1]) / scale
 
-                # Only invert on the first zoom (count == 1)
-                if st.session_state.zoom_count == 1:
-                    # First zoom: invert relative to the ORIGINAL full range
-                    full_y_min = plot_bottom
-                    full_y_max = plot_top
-                    full_y_center = (full_y_min + full_y_max) / 2
-
-                    # Invert y-coordinates by flipping them around the center
-                    y_val_1_inverted = 2 * full_y_center - y_val_1
-                    y_val_2_inverted = 2 * full_y_center - y_val_2
-
-                    y_min_zoom = min(y_val_1_inverted, y_val_2_inverted)
-                    y_max_zoom = max(y_val_1_inverted, y_val_2_inverted)
-                else:
-                    # Subsequent zooms (count >= 2): use coordinates as-is
-                    y_min_zoom = min(y_val_1, y_val_2)
-                    y_max_zoom = max(y_val_1, y_val_2)
+                st.write(f"Final zoom bounds (cm): x=[{x_min_zoom}, {x_max_zoom}], y=[{y_min_zoom}, {y_max_zoom}]")
 
                 width_x_zoom = abs(x_max_zoom - x_min_zoom)
                 width_y_zoom = abs(y_max_zoom - y_min_zoom)
 
                 origin_x_zoom = (x_min_zoom + x_max_zoom) / 2
                 origin_y_zoom = (y_min_zoom + y_max_zoom) / 2
+
+                st.write(f"Origin: ({origin_x_zoom}, {origin_y_zoom}), Width: ({width_x_zoom}, {width_y_zoom})")
 
                 # Map plot coordinates to 3D origin based on basis
                 # basis determines which 3D axes are shown:
@@ -443,16 +434,20 @@ def main():
                     # x-axis = Y coordinate, y-axis = Z coordinate
                     origin_zoom = (origin[0], origin_x_zoom, origin_y_zoom)
 
-
+                st.write(f"3D Origin for OpenMC: {origin_zoom}")
+                st.write(f"Basis: {basis}")
+                
                 # Use the same pixel count but for a smaller region (higher resolution)
                 actual_pixels = pixels
                 actual_origin = origin_zoom
                 actual_width = [width_x_zoom, width_y_zoom]
-
-                # Store the current viewport for the next zoom iteration
-                st.session_state.current_viewport = {
-                    'y_min': y_min_zoom,
-                    'y_max': y_max_zoom
+                
+                # Update current bounds for next zoom iteration (no longer needed but keeping for potential future use)
+                st.session_state.current_bounds = {
+                    'plot_left': x_min_zoom,
+                    'plot_right': x_max_zoom,
+                    'plot_bottom': y_min_zoom,
+                    'plot_top': y_max_zoom
                 }
 
                 # Calculate the resolution improvement factor
@@ -461,7 +456,7 @@ def main():
                 st.success(f"🔍 Zoomed view (pixels distributed over {zoom_factor:.1f}x smaller area)")
                 if st.button("↩️ Reset to Full View"):
                     st.session_state.zoom_region = None
-                    st.session_state.current_viewport = None
+                    st.session_state.current_bounds = None
                     st.session_state.zoom_count = 0
                     st.rerun()
             else:
@@ -501,7 +496,7 @@ def main():
             plot_key = f"plotly_plot_{st.session_state.zoom_count}"
             selection = st.plotly_chart(
                 plot,
-                use_container_width=True,
+                width='stretch',
                 key=plot_key,
                 on_select="rerun",
                 selection_mode="box",
