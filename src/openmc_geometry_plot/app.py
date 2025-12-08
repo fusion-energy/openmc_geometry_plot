@@ -51,6 +51,8 @@ def main():
 
         title_3 = '<center><p> Not got geometry files handy? Right mouse 🖱️ click and save this link <a href="https://raw.githubusercontent.com/fusion-energy/openmc_geometry_plot/31be0556f3f34c102cab3de094df08f48acad5ca/examples/csg_tokamak/geometry.xml" download>geometry.xml</a></p></center>'
         st.markdown(title_3, unsafe_allow_html=True)
+        title_3 = '<center><p> Not got DAGMC files handy? Right mouse 🖱️ click and save this link <a href="https://github.com/fusion-energy/neutronics-workshop/raw/refs/heads/main/tasks/task_18_CAD_mesh_fast_flux/dagmc.h5m" download>dagmc.h5m</a></p></center>'
+        st.markdown(title_3, unsafe_allow_html=True)
 
     # DAGMC route
     elif dagmc_file is not None and geometry_xml_file is not None:
@@ -395,11 +397,6 @@ def main():
                 axis_scaling_factor = {'km': 0.00001, 'm': 0.01, 'cm': 1, 'mm': 10}
                 scale = axis_scaling_factor[axis_units]
 
-                # Debug output
-                st.write("DEBUG INFO:")
-                st.write(f"Selection from Plotly: x_range={x_range}, y_range={y_range}")
-                st.write(f"Scale factor: {scale}, axis_units: {axis_units}")
-
                 # Plotly gives us coordinates in the display coordinate system
                 # Since y-axis has autorange="reversed", the visual display is flipped,
                 # but the coordinate values themselves are NOT flipped
@@ -410,15 +407,11 @@ def main():
                 y_min_zoom = min(y_range[0], y_range[1]) / scale
                 y_max_zoom = max(y_range[0], y_range[1]) / scale
 
-                st.write(f"Final zoom bounds (cm): x=[{x_min_zoom}, {x_max_zoom}], y=[{y_min_zoom}, {y_max_zoom}]")
-
                 width_x_zoom = abs(x_max_zoom - x_min_zoom)
                 width_y_zoom = abs(y_max_zoom - y_min_zoom)
 
                 origin_x_zoom = (x_min_zoom + x_max_zoom) / 2
                 origin_y_zoom = (y_min_zoom + y_max_zoom) / 2
-
-                st.write(f"Origin: ({origin_x_zoom}, {origin_y_zoom}), Width: ({width_x_zoom}, {width_y_zoom})")
 
                 # Map plot coordinates to 3D origin based on basis
                 # basis determines which 3D axes are shown:
@@ -433,9 +426,6 @@ def main():
                 elif basis == 'yz':
                     # x-axis = Y coordinate, y-axis = Z coordinate
                     origin_zoom = (origin[0], origin_x_zoom, origin_y_zoom)
-
-                st.write(f"3D Origin for OpenMC: {origin_zoom}")
-                st.write(f"Basis: {basis}")
                 
                 # Use the same pixel count but for a smaller region (higher resolution)
                 actual_pixels = pixels

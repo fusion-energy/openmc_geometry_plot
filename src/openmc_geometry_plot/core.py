@@ -77,29 +77,6 @@ def get_side_extent(self, side: str, view_direction: str, bounding_box=None):
     return avail_extents[(side, view_direction)]
 
 
-def get_mpl_plot_extent(self, view_direction):
-    """Returns the (x_min, x_max, y_min, y_max) of the bounding box. The
-    view_direction is taken into account and can be set using
-    openmc.Geometry.view_direction property is taken into account and can be
-    set to 'x', 'y' or 'z'."""
-
-    bb = self.bounding_box
-
-    x_min = self.get_side_extent(
-        side="left", view_direction=view_direction, bounding_box=bb
-    )
-    x_max = self.get_side_extent(
-        side="right", view_direction=view_direction, bounding_box=bb
-    )
-    y_min = self.get_side_extent(
-        side="bottom", view_direction=view_direction, bounding_box=bb
-    )
-    y_max = self.get_side_extent(
-        side="top", view_direction=view_direction, bounding_box=bb
-    )
-
-    return (x_min, x_max, y_min, y_max)
-
 
 def get_mid_slice_value(self, view_direction, bounding_box=None):
     """Returns the position of the center of the mesh. The view_direction is
@@ -167,61 +144,6 @@ def get_dagmc_universe(self):
     for univ in self.get_all_universes().values():
         if isinstance(univ, openmc.DAGMCUniverse):
             return univ
-
-
-def _calculate_plot_parameters(
-    geometry,
-    view_direction: str,
-    slice_value: typing.Optional[float],
-    plot_left: typing.Optional[float],
-    plot_right: typing.Optional[float],
-    plot_bottom: typing.Optional[float],
-    plot_top: typing.Optional[float],
-):
-    """Helper function to calculate origin, width, and basis for plotting.
-
-    Args:
-        geometry: OpenMC Geometry object
-        view_direction: 'x', 'y', or 'z'
-        slice_value: Position along the view direction
-        plot_left: Left edge of plot
-        plot_right: Right edge of plot
-        plot_bottom: Bottom edge of plot
-        plot_top: Top edge of plot
-
-    Returns:
-        tuple: (origin, width, basis) suitable for model.id_map()
-    """
-    bb = geometry.bounding_box
-
-    # Get plot extent
-    plot_left, plot_right, plot_bottom, plot_top, slice_value = geometry.get_plot_extent(
-        plot_left, plot_right, plot_bottom, plot_top, slice_value, bb, view_direction
-    )
-
-    # Calculate center and dimensions
-    plot_x = (plot_left + plot_right) / 2
-    plot_y = (plot_top + plot_bottom) / 2
-    width_x = abs(plot_left - plot_right)
-    width_y = abs(plot_top - plot_bottom)
-
-    # Map view_direction to basis and origin
-    if view_direction == "z":
-        basis = "xy"
-        origin = (plot_x, plot_y, slice_value)
-        width = (width_x, width_y)
-    elif view_direction == "x":
-        basis = "yz"
-        origin = (slice_value, plot_x, plot_y)
-        width = (width_x, width_y)
-    elif view_direction == "y":
-        basis = "xz"
-        origin = (plot_x, slice_value, plot_y)
-        width = (width_x, width_y)
-    else:
-        raise ValueError(f'view_direction must be "x", "y" or "z", not {view_direction}')
-
-    return origin, width, basis
 
 
 def plot_plotly(
@@ -581,7 +503,6 @@ openmc.Geometry.is_geometry_dagmc = is_geometry_dagmc
 openmc.Geometry.get_dagmc_filepath = get_dagmc_filepath
 openmc.Geometry.get_plot_extent = get_plot_extent
 openmc.Geometry.get_side_extent = get_side_extent
-openmc.Geometry.get_mpl_plot_extent = get_mpl_plot_extent
 openmc.Geometry.get_mid_slice_value = get_mid_slice_value
 openmc.Geometry.get_axis_labels = get_axis_labels
 openmc.Geometry.find_cell_id = find_cell_id
