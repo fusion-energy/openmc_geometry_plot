@@ -336,6 +336,11 @@ def plot_plotly(
             if original_cross_sections is not None:
                 openmc.config["cross_sections"] = original_cross_sections
 
+        # Flip image vertically for correct display orientation in Plotly
+        # Plotly heatmap shows first row at bottom, but we want first row at top
+        # This needs to be done early as it's used in multiple places
+        image_values_flipped = np.flipud(image_values)
+
         # Build the plotly figure
         data = []
 
@@ -372,84 +377,98 @@ def plot_plotly(
             # For discrete colors, we need to create steps where each ID gets exactly one color
             all_ids = sorted(set(list(id_to_color.keys()) + [0]))  # Include 0 for void
             
-            # Remap -3 to a position in the colorscale
-            # We'll map it to a value beyond the max regular ID
-            max_regular_id = max([id for id in all_ids if id > 0]) if any(id > 0 for id in all_ids) else 1
-            overlap_display_value = max_regular_id + 1 if show_overlaps and -3 in all_ids else None
+            # Remap -3 to a position at the bottom of the colorscale (below void)
+            # We'll map it to -1 to put it at the bottom
+            overlap_display_value = -1 if show_overlaps and -3 in all_ids else None
             
             # Create a remapped image for display purposes
             image_values_display = image_values.copy()
             if overlap_display_value is not None:
                 image_values_display = np.where(image_values == -3, overlap_display_value, image_values)
             
-            # Flip image vertically for correct display orientation in Plotly
-            # Plotly heatmap shows first row at bottom, but we want first row at top
+            # Update the flipped image with the remapped values
             image_values_flipped = np.flipud(image_values_display)
             
             # Remove -3 from all_ids and add the remapped value if needed
+            # Also create a mapping from display value to original ID for labels
+            display_to_original = {}
             if -3 in all_ids:
                 all_ids.remove(-3)
                 if overlap_display_value is not None:
-                    all_ids.append(overlap_display_value)
-                    all_ids = sorted(all_ids)
+                    all_ids.insert(0, overlap_display_value)  # Insert at beginning (bottom of scale)
+                    display_to_original[overlap_display_value] = -3
+            
+            # Map all other IDs to themselves
+            for id_val in all_ids:
+                if id_val not in display_to_original:
+                    display_to_original[id_val] = id_val
             
             max_id = max(all_ids) if all_ids else 1
+            min_id = min(all_ids) if all_ids else 0
 
-            # Build a stepped colorscale
+            # Build a discrete colorscale
+            # The colorscale maps normalized positions [0, 1] to colors
+            # We need to map data values [min_id, max_id] to the colorscale
             dcolorsc = []
-            for i, id_val in enumerate(all_ids):
-                if id_val == 0:
-                    color = 'white'
-                elif show_overlaps and id_val == overlap_display_value:
-                    color = id_to_color.get(-3, 'rgb(255,0,0)')  # Red default for overlaps
-                else:
-                    color = id_to_color.get(id_val, 'rgb(128,128,128)')  # Gray for unmapped IDs
-
-                # Create discrete steps by adding the same color at boundaries
-                if i == 0:
-                    dcolorsc.append([id_val / max_id, color])
-                else:
-                    # Add a tiny step before this ID to keep previous color
-                    dcolorsc.append([(id_val - 0.0001) / max_id, prev_color])
-                    dcolorsc.append([id_val / max_id, color])
-
-                prev_color = color
-
-            # Add final point
-            dcolorsc.append([1.0, prev_color])
-
-            # Calculate tick positions and labels at the center of each discrete block
-            sorted_ids = sorted([id for id in id_to_color.keys() if id != -3])
             tick_positions = []
             tick_labels = []
             
-            for id_val in sorted_ids:
-                # Map the ID to display value (handle overlap remapping)
-                display_id = overlap_display_value if (id_val == -3 and overlap_display_value is not None) else id_val
+            for i, id_val in enumerate(all_ids):
+                original_id = display_to_original[id_val]
                 
-                # Find the midpoint of this ID's color block
-                try:
-                    id_index = all_ids.index(display_id)
-                    if id_index < len(all_ids) - 1:
-                        next_id = all_ids[id_index + 1]
-                        midpoint = (display_id + next_id) / 2
-                    else:
-                        midpoint = (display_id + max_id) / 2
-                    tick_positions.append(midpoint / max_id * max_id)
-                    tick_labels.append(str(id_val))
-                except ValueError:
-                    pass  # ID not in all_ids, skip it
-            
-            # Add overlap tick if present
-            if show_overlaps and overlap_display_value is not None and overlap_display_value in all_ids:
-                id_index = all_ids.index(overlap_display_value)
-                if id_index < len(all_ids) - 1:
-                    next_id = all_ids[id_index + 1]
-                    midpoint = (overlap_display_value + next_id) / 2
+                if id_val == 0:
+                    color = 'white'
+                elif original_id == -3:
+                    color = id_to_color.get(-3, 'rgb(255,0,0)')  # Red default for overlaps
                 else:
-                    midpoint = (overlap_display_value + max_id) / 2
-                tick_positions.append(midpoint / max_id * max_id)
-                tick_labels.append("Overlap")
+                    color = id_to_color.get(original_id, 'rgb(128,128,128)')  # Gray for unmapped IDs
+
+                # Normalize the ID value to [0, 1] range for the colorscale
+                norm_val = (id_val - min_id) / (max_id - min_id) if max_id != min_id else 0.5
+                
+                # Create discrete color blocks
+                if i == 0:
+                    dcolorsc.append([0.0, color])
+                    if norm_val > 0:
+                        # If first ID is not at min, fill gap
+                        dcolorsc.append([norm_val - 0.00001, dcolorsc[-1][1]])
+                        dcolorsc.append([norm_val, color])
+                else:
+                    # Add step just before this ID
+                    prev_color = dcolorsc[-1][1]
+                    dcolorsc.append([norm_val - 0.00001, prev_color])
+                    dcolorsc.append([norm_val, color])
+                
+                # For the last ID, extend to 1.0
+                if i == len(all_ids) - 1:
+                    dcolorsc.append([1.0, color])
+                
+                # Calculate tick position at the midpoint between this ID and the next
+                # For proper centering, we calculate the midpoint based on the spacing between consecutive IDs
+                if i < len(all_ids) - 1:
+                    next_id = all_ids[i + 1]
+                    tick_pos = (id_val + next_id) / 2.0
+                else:
+                    # For the last ID, we need to extrapolate the same spacing as between previous IDs
+                    if len(all_ids) == 1:
+                        # Only one ID, center it at that value
+                        tick_pos = id_val
+                    elif len(all_ids) >= 2:
+                        # Use the spacing between the last two IDs
+                        prev_id = all_ids[i - 1]
+                        spacing = id_val - prev_id
+                        # Place tick at half the spacing beyond current ID
+                        tick_pos = id_val + spacing / 2.0
+                
+                tick_positions.append(tick_pos)
+                
+                # Determine the label using original ID
+                if original_id == -3:
+                    tick_labels.append("Overlap")
+                elif original_id == 0:
+                    tick_labels.append("void")
+                else:
+                    tick_labels.append(str(original_id))
 
             cbar = dict(
                 tick0=0,
@@ -461,8 +480,7 @@ def plot_plotly(
             )
         else:
             # Default colorbar for void-only or empty geometries
-            # Still need to flip the image
-            image_values_flipped = np.flipud(image_values)
+            # image_values_flipped was already created earlier
             dcolorsc = [[0, 'white'], [1, 'white']]
             cbar = dict(
                 title=f'{color_by.title()} IDs',
@@ -530,7 +548,7 @@ def plot_plotly(
                 showscale=legend,
                 hoverinfo='text',
                 text=hovertext,
-                zmin=0,
+                zmin=min(all_ids) if (colors and len(colors) > 0) else 0,
                 zmax=max(all_ids) if (colors and len(colors) > 0) else 1,
             )
         )
