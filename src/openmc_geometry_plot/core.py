@@ -375,7 +375,8 @@ def plot_plotly(
 
             # Create discrete colorscale
             # For discrete colors, we need to create steps where each ID gets exactly one color
-            all_ids = sorted(set(list(id_to_color.keys()) + [0]))  # Include 0 for void
+            # Include ALL unique IDs from the image data, not just those with assigned colors
+            all_ids = sorted(set(list(id_to_color.keys()) + list(unique_ids) + [0]))  # Include 0 for void and all IDs from image
             
             # Remap -3 to a position at the bottom of the colorscale (below void)
             # We'll map it to -1 to put it at the bottom
@@ -407,8 +408,8 @@ def plot_plotly(
             min_id = min(all_ids) if all_ids else 0
 
             # Build a discrete colorscale
-            # The colorscale maps normalized positions [0, 1] to colors
-            # We need to map data values [min_id, max_id] to the colorscale
+            # Give each ID an equal-width block in the colorscale for better visibility
+            num_ids = len(all_ids)
             dcolorsc = []
             tick_positions = []
             tick_labels = []
@@ -423,43 +424,28 @@ def plot_plotly(
                 else:
                     color = id_to_color.get(original_id, 'rgb(128,128,128)')  # Gray for unmapped IDs
 
-                # Normalize the ID value to [0, 1] range for the colorscale
-                norm_val = (id_val - min_id) / (max_id - min_id) if max_id != min_id else 0.5
+                # Give each ID an equal fraction of the colorscale [0, 1]
+                block_start = i / num_ids
+                block_end = (i + 1) / num_ids
                 
-                # Create discrete color blocks
+                # Create discrete color blocks in normalized [0, 1] space
                 if i == 0:
                     dcolorsc.append([0.0, color])
-                    if norm_val > 0:
-                        # If first ID is not at min, fill gap
-                        dcolorsc.append([norm_val - 0.00001, dcolorsc[-1][1]])
-                        dcolorsc.append([norm_val, color])
                 else:
-                    # Add step just before this ID
-                    prev_color = dcolorsc[-1][1]
-                    dcolorsc.append([norm_val - 0.00001, prev_color])
-                    dcolorsc.append([norm_val, color])
+                    # Add tiny step just before this block to maintain previous color
+                    dcolorsc.append([block_start - 0.00001, dcolorsc[-1][1]])
+                    dcolorsc.append([block_start, color])
                 
-                # For the last ID, extend to 1.0
-                if i == len(all_ids) - 1:
+                # Extend the last block to 1.0
+                if i == num_ids - 1:
                     dcolorsc.append([1.0, color])
                 
-                # Calculate tick position at the midpoint between this ID and the next
-                # For proper centering, we calculate the midpoint based on the spacing between consecutive IDs
-                if i < len(all_ids) - 1:
-                    next_id = all_ids[i + 1]
-                    tick_pos = (id_val + next_id) / 2.0
-                else:
-                    # For the last ID, we need to extrapolate the same spacing as between previous IDs
-                    if len(all_ids) == 1:
-                        # Only one ID, center it at that value
-                        tick_pos = id_val
-                    elif len(all_ids) >= 2:
-                        # Use the spacing between the last two IDs
-                        prev_id = all_ids[i - 1]
-                        spacing = id_val - prev_id
-                        # Place tick at half the spacing beyond current ID
-                        tick_pos = id_val + spacing / 2.0
+                # Place tick at the center of this block in the colorbar
+                # Block center in normalized [0,1] space
+                block_center_norm = (block_start + block_end) / 2.0
                 
+                # Map normalized position back to data value range [min_id, max_id]
+                tick_pos = min_id + block_center_norm * (max_id - min_id)
                 tick_positions.append(tick_pos)
                 
                 # Determine the label using original ID
@@ -478,6 +464,10 @@ def plot_plotly(
                 ticktext=tick_labels,
                 title=f'{color_by.title()} IDs',
             )
+            
+            # Use max_id for zmax since ticks are now at actual ID values
+            zmax_value = max_id
+            
         else:
             # Default colorbar for void-only or empty geometries
             # image_values_flipped was already created earlier
@@ -549,7 +539,7 @@ def plot_plotly(
                 hoverinfo='text',
                 text=hovertext,
                 zmin=min(all_ids) if (colors and len(colors) > 0) else 0,
-                zmax=max(all_ids) if (colors and len(colors) > 0) else 1,
+                zmax=zmax_value if (colors and len(colors) > 0) else 1,
             )
         )
 
