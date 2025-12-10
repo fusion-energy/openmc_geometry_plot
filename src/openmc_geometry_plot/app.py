@@ -164,6 +164,14 @@ def main():
             materials=my_mats
         )
         all_cells = my_geometry.get_all_cells()
+        
+        # Get material IDs from the loaded geometry instead of just from XML parsing
+        # This ensures we capture all materials, even those in filled universes
+        all_materials_in_geometry = my_geometry.get_all_materials()
+        if len(all_materials_in_geometry) > 0:
+            set_mat_ids = set(all_materials_in_geometry.keys())
+        else:
+            set_mat_ids = set_mat_ids  # Keep the XML-parsed IDs if no materials found
 
     if my_geometry:
         # Lazy import heavy libraries only when geometry is loaded
@@ -283,6 +291,25 @@ def main():
             key="outline",
             help="Allows an outline to be drawn around the cells or materials, select None for no outline",
         )
+        
+        show_overlaps = st.sidebar.selectbox(
+            label="Show overlaps",
+            options=(True, False),
+            index=1,
+            key="show_overlaps",
+            help="Highlight geometry overlaps in a special color. Requires OpenMC with overlap detection support.",
+        )
+        
+        if show_overlaps:
+            overlap_color_hex = st.sidebar.color_picker(
+                "Color for overlaps",
+                key="overlap_color",
+                value="#FF0000",  # Red by default
+            )
+            overlap_color_hex_clean = overlap_color_hex.lstrip("#")
+            overlap_color = tuple(int(overlap_color_hex_clean[i : i + 2], 16) for i in (0, 2, 4))
+        else:
+            overlap_color = None
 
         if color_by == "material":
             num_items = len(set_mat_ids)
@@ -334,9 +361,19 @@ def main():
 
             my_colors = {}  # adding entry for void cells
             for id, value in all_cells.items():
-                hex_color = st.session_state[f"cell_{id}"].lstrip("#")
-                RGB = tuple(int(hex_color[i : i + 2], 16)  for i in (0, 2, 4))
-                my_colors[value] =  RGB
+                # Check if the session state exists for this cell (it should after color picker creation)
+                if f"cell_{id}" in st.session_state:
+                    hex_color = st.session_state[f"cell_{id}"].lstrip("#")
+                    RGB = tuple(int(hex_color[i : i + 2], 16)  for i in (0, 2, 4))
+                    my_colors[value] = RGB
+                else:
+                    # Fallback: use a default color if session state is missing
+                    # This shouldn't normally happen, but ensures robustness
+                    idx = list(all_cells.keys()).index(id)
+                    if idx < len(initial_hex_color):
+                        hex_color = initial_hex_color[idx].lstrip("#")
+                        RGB = tuple(int(hex_color[i : i + 2], 16)  for i in (0, 2, 4))
+                        my_colors[value] = RGB
 
         title = st.sidebar.text_input(
             "Plot title",
@@ -474,7 +511,9 @@ def main():
                 legend=legend,
                 axis_units=axis_units,
                 outline=outline,
-                title=title
+                title=title,
+                show_overlaps=show_overlaps,
+                overlap_color=overlap_color
             )
 
             plot.write_html("openmc_plot_geometry_image.html")
