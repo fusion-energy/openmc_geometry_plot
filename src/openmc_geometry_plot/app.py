@@ -3,8 +3,6 @@ import streamlit as st
 import numpy as np
 import colorsys
 import openmc
-import openmc
-import numpy as np
 import typing
 from pathlib import Path
 import math
@@ -14,11 +12,12 @@ import hashlib
 import json
 
 
-# Cache for id_map results to avoid redundant expensive calls
-_id_map_cache = {}
+# Initialize caches in session_state to persist across Streamlit reruns
+if '_id_map_cache' not in st.session_state:
+    st.session_state._id_map_cache = {}
 
-# Cache for hovertext to avoid regenerating on every plot update
-_hovertext_cache = {}
+if '_hovertext_cache' not in st.session_state:
+    st.session_state._hovertext_cache = {}
 
 
 def _get_cache_key(geometry, materials, origin, width, pixels, basis, show_overlaps):
@@ -223,10 +222,10 @@ def get_id_map_cached(
     # Check cache first
     cache_key = _get_cache_key(geometry, materials, origin, width, pixels, basis, show_overlaps)
     
-    if cache_key in _id_map_cache:
+    if cache_key in st.session_state._id_map_cache:
         elapsed = time.time() - start_time
         print(f"✓ Using cached ID map (cache key: {cache_key[:8]}...) - {elapsed:.3f}s")
-        return _id_map_cache[cache_key]
+        return st.session_state._id_map_cache[cache_key]
     
     print(f"⚙ Computing new ID map (cache key: {cache_key[:8]}...)")
     compute_start = time.time()
@@ -265,13 +264,13 @@ def get_id_map_cached(
         print(f"  → model.id_map() completed in {idmap_elapsed:.3f}s")
         
         # Store in cache before returning
-        _id_map_cache[cache_key] = id_map
+        st.session_state._id_map_cache[cache_key] = id_map
         
         # Limit cache size to prevent memory issues (keep last 10 results)
-        if len(_id_map_cache) > 10:
+        if len(st.session_state._id_map_cache) > 10:
             # Remove oldest entry
-            oldest_key = next(iter(_id_map_cache))
-            del _id_map_cache[oldest_key]
+            oldest_key = next(iter(st.session_state._id_map_cache))
+            del st.session_state._id_map_cache[oldest_key]
         
         total_elapsed = time.time() - start_time
         print(f"✓ ID map computed and cached - total {total_elapsed:.3f}s")
@@ -636,8 +635,8 @@ def plot_plotly(
         idmap_cache_key = _get_cache_key(geometry, materials, origin, width, pixels, basis, show_overlaps)
         hover_cache_key = f"{idmap_cache_key}_hover"
         
-        if hover_cache_key in _hovertext_cache:
-            hovertext = _hovertext_cache[hover_cache_key]
+        if hover_cache_key in st.session_state._hovertext_cache:
+            hovertext = st.session_state._hovertext_cache[hover_cache_key]
             hover_time = time.time() - hover_start
             print(f"  → Using cached hovertext - {hover_time:.3f}s")
         else:
@@ -698,12 +697,12 @@ def plot_plotly(
                 hovertext.append(row_text)
             
             # Cache the hovertext
-            _hovertext_cache[hover_cache_key] = hovertext
+            st.session_state._hovertext_cache[hover_cache_key] = hovertext
             
             # Limit cache size
-            if len(_hovertext_cache) > 10:
-                oldest_key = next(iter(_hovertext_cache))
-                del _hovertext_cache[oldest_key]
+            if len(st.session_state._hovertext_cache) > 10:
+                oldest_key = next(iter(st.session_state._hovertext_cache))
+                del st.session_state._hovertext_cache[oldest_key]
             
             hover_time = time.time() - hover_start
             print(f"  → Hovertext generated and cached - {hover_time:.3f}s ({cell_ids.shape[0]}x{cell_ids.shape[1]} pixels)")
