@@ -302,7 +302,7 @@ def plot_plotly(
     legend=False,
     axis_units='cm',
     # legend_kwargs=_default_legend_kwargs,
-    outline=False,
+    outline="no outline",
     title='',
     show_overlaps=False,
     overlap_color=None
@@ -357,8 +357,8 @@ def plot_plotly(
             Keyword arguments passed to :func:`matplotlib.pyplot.legend`.
 
             .. versionadded:: 0.14.0
-        outline : bool
-            Whether outlines between color boundaries should be drawn
+        outline : str
+            Type of outline to draw: "outline by material", "outline by cell", or "no outline"
 
             .. versionadded:: 0.14.0
         axis_units : {'km', 'm', 'cm', 'mm'}
@@ -459,16 +459,43 @@ def plot_plotly(
         # Build the plotly figure
         data = []
 
-        if outline:
+        # Determine if outline should be drawn and which data to use for contouring
+        if outline == "outline by material":
+            # Extract material IDs for outlining
+            # Note: Overlaps (-3) only appear in cell IDs, not material IDs
+            outline_values = id_map[:, :, 2]
+            outline_values = np.where(outline_values < 0, 0, outline_values)
+            outline_values_flipped = np.flipud(outline_values)
+            
             data.append(
                 go.Contour(
-                    z=image_values_flipped,
+                    z=outline_values_flipped,
                     contours_coloring='none',
                     showscale=False,
                     x0=x_min,
-                    dx=abs(x_min - x_max) / (image_values_flipped.shape[1] - 1),
+                    dx=abs(x_min - x_max) / (outline_values_flipped.shape[1] - 1),
                     y0=y_min,
-                    dy=abs(y_min - y_max) / (image_values_flipped.shape[0] - 1),
+                    dy=abs(y_min - y_max) / (outline_values_flipped.shape[0] - 1),
+                )
+            )
+        elif outline == "outline by cell":
+            # Extract cell IDs for outlining
+            outline_values = id_map[:, :, 0]
+            if show_overlaps:
+                outline_values = np.where((outline_values < 0) & (outline_values != -3), 0, outline_values)
+            else:
+                outline_values = np.where(outline_values < 0, 0, outline_values)
+            outline_values_flipped = np.flipud(outline_values)
+            
+            data.append(
+                go.Contour(
+                    z=outline_values_flipped,
+                    contours_coloring='none',
+                    showscale=False,
+                    x0=x_min,
+                    dx=abs(x_min - x_max) / (outline_values_flipped.shape[1] - 1),
+                    y0=y_min,
+                    dy=abs(y_min - y_max) / (outline_values_flipped.shape[0] - 1),
                 )
             )
 
