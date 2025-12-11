@@ -1,10 +1,10 @@
 import xml.etree.ElementTree as ET
 import streamlit as st
-from openmc_geometry_plot import plot_plotly
+from .core import plot_plotly
 import numpy as np
 import colorsys
 import openmc
-import openmc_geometry_plot  # adds extra functions to openmc.Geometry
+import .core  # adds extra functions to openmc.Geometry
 
 def save_uploadedfile(uploadedfile):
     with open(uploadedfile.name, "wb") as f:
