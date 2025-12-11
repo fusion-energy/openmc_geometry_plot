@@ -1,6 +1,10 @@
 import xml.etree.ElementTree as ET
 import streamlit as st
-
+from openmc_geometry_plot import plot_plotly
+import numpy as np
+import colorsys
+import openmc
+import openmc_geometry_plot  # adds extra functions to openmc.Geometry
 
 def save_uploadedfile(uploadedfile):
     with open(uploadedfile.name, "wb") as f:
@@ -9,13 +13,14 @@ def save_uploadedfile(uploadedfile):
 
 
 def make_placeholder_materials(set_mat_names, set_mat_ids) :
-    import openmc
+
     materials = openmc.Materials()
     for name, id in zip(set_mat_names, set_mat_ids):
         mat = openmc.Material(name=str(name), material_id=id)
         mat.add_nuclide("He4", 1.0)
         materials.append(mat)
     return materials
+
 
 def header():
     """This section writes out the page header common to all tabs"""
@@ -64,9 +69,6 @@ def main():
 
     # DAGMC route
     elif dagmc_file is not None and geometry_xml_file is not None:
-        # Lazy import openmc only when needed
-        import openmc
-        import openmc_geometry_plot  # adds extra functions to openmc.Geometry
 
         save_uploadedfile(dagmc_file)
         save_uploadedfile(geometry_xml_file)
@@ -93,9 +95,6 @@ def main():
         set_mat_names = set(dag_universe.material_names)
 
     elif dagmc_file is not None and geometry_xml_file is None:
-        # Lazy import openmc only when needed
-        import openmc
-        import openmc_geometry_plot  # adds extra functions to openmc.Geometry
 
         save_uploadedfile(dagmc_file)
 
@@ -124,9 +123,6 @@ def main():
 
     # CSG route
     elif dagmc_file is None and geometry_xml_file is not None:
-        # Lazy import openmc only when needed
-        import openmc
-        import openmc_geometry_plot  # adds extra functions to openmc.Geometry
 
         save_uploadedfile(geometry_xml_file)
 
@@ -174,9 +170,6 @@ def main():
             set_mat_ids = set_mat_ids  # Keep the XML-parsed IDs if no materials found
 
     if my_geometry:
-        # Lazy import heavy libraries only when geometry is loaded
-        import numpy as np
-        import colorsys
         
         print("geometry is set to something so attempting to plot")
         bb = my_geometry.bounding_box
@@ -315,12 +308,15 @@ def main():
             num_items = len(set_mat_ids)
             # Use HSV color space with golden ratio to generate distinct colors
             # This works well for any number of materials
-            initial_hex_color = []
-            for i in range(num_items):
-                hue = (i * 0.618033988749895) % 1.0  # Golden ratio for good color distribution
-                rgb = colorsys.hsv_to_rgb(hue, 0.9, 0.9)  # High saturation and value for vivid colors
-                hex_color = '#{:02x}{:02x}{:02x}'.format(int(rgb[0]*255), int(rgb[1]*255), int(rgb[2]*255))
-                initial_hex_color.append(hex_color)
+            # Use list comprehension for faster execution
+            initial_hex_color = [
+                '#{:02x}{:02x}{:02x}'.format(
+                    int(colorsys.hsv_to_rgb((i * 0.618033988749895) % 1.0, 0.9, 0.9)[0] * 255),
+                    int(colorsys.hsv_to_rgb((i * 0.618033988749895) % 1.0, 0.9, 0.9)[1] * 255),
+                    int(colorsys.hsv_to_rgb((i * 0.618033988749895) % 1.0, 0.9, 0.9)[2] * 255)
+                )
+                for i in range(num_items)
+            ]
 
             for c, id in enumerate(set_mat_ids):
                 st.sidebar.color_picker(
@@ -330,22 +326,26 @@ def main():
                 )
 
             my_colors = {}
+            all_materials = my_geometry.get_all_materials()  # Cache to avoid repeated calls
             for id in set_mat_ids:
                 hex_color = st.session_state[f"mat_{id}"].lstrip("#")
                 RGB = tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
-                mat = my_geometry.get_all_materials()[id]
+                mat = all_materials[id]
                 my_colors[mat] = RGB
 
         elif color_by == "cell":
             num_items = len(all_cells)
             # Use HSV color space with golden ratio to generate distinct colors
             # This works well for any number of cells
-            initial_hex_color = []
-            for i in range(num_items):
-                hue = (i * 0.618033988749895) % 1.0  # Golden ratio for good color distribution
-                rgb = colorsys.hsv_to_rgb(hue, 0.9, 0.9)  # High saturation and value for vivid colors
-                hex_color = '#{:02x}{:02x}{:02x}'.format(int(rgb[0]*255), int(rgb[1]*255), int(rgb[2]*255))
-                initial_hex_color.append(hex_color)
+            # Use list comprehension for faster execution
+            initial_hex_color = [
+                '#{:02x}{:02x}{:02x}'.format(
+                    int(colorsys.hsv_to_rgb((i * 0.618033988749895) % 1.0, 0.9, 0.9)[0] * 255),
+                    int(colorsys.hsv_to_rgb((i * 0.618033988749895) % 1.0, 0.9, 0.9)[1] * 255),
+                    int(colorsys.hsv_to_rgb((i * 0.618033988749895) % 1.0, 0.9, 0.9)[2] * 255)
+                )
+                for i in range(num_items)
+            ]
 
             for c, cell in enumerate(all_cells.values()):
                 if cell.name in ["", None]:
@@ -410,7 +410,6 @@ def main():
             width_x=abs(plot_left-plot_right)
             width_y=abs(plot_top-plot_bottom)
 
-            from openmc_geometry_plot import plot_plotly
             print('plotting with plotly')
 
             # Initialize zoom state
@@ -499,9 +498,14 @@ def main():
                 actual_origin = origin
                 actual_width = [width_x, width_y]
 
+            # Create materials and plot directly
+            # The expensive model.id_map call is cached in core.py's get_id_map_cached function
+            # which only recomputes when origin, width, pixels, basis, or show_overlaps change
+            materials_obj = make_placeholder_materials(set_mat_names, set_mat_ids)
+            
             plot = plot_plotly(
                 geometry=my_geometry,
-                materials = make_placeholder_materials(set_mat_names, set_mat_ids),
+                materials=materials_obj,
                 origin=actual_origin,
                 width=actual_width,
                 pixels=actual_pixels,
