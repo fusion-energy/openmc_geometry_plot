@@ -1,0 +1,5 @@
+--extra-index-url https://shimwell.github.io/wheels
+numpy>=1.21.1
+streamlit
+plotly
+openmc

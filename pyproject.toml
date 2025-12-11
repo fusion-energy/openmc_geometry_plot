@@ -17,11 +17,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-dependencies = [
-    "numpy>=1.21.1",
-    "streamlit",
-    "plotly"
-]
+dynamic = ["dependencies"]
 version = "1.0.0"
 
 
@@ -36,6 +32,9 @@ tests = [
 
 [tool.setuptools]
 package-dir = {"" = "src"}
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
 
 [project.scripts]
 openmc_geometry_plot = "openmc_geometry_plot.launch:main"
