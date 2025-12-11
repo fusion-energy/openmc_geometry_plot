@@ -4,7 +4,6 @@ from .core import plot_plotly
 import numpy as np
 import colorsys
 import openmc
-import .core  # adds extra functions to openmc.Geometry
 
 def save_uploadedfile(uploadedfile):
     with open(uploadedfile.name, "wb") as f:
