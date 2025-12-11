@@ -22,11 +22,7 @@ dependencies = [
     "streamlit",
     "plotly"
 ]
-dynamic = ["version"]
-
-
-[tool.setuptools_scm]
-write_to = "src/openmc_geometry_plot/_version.py"
+version = "1.0.0"
 
 
 [project.optional-dependencies]
