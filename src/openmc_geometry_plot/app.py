@@ -279,10 +279,10 @@ def main():
         )
         outline = st.sidebar.selectbox(
             label="Outline",
-            options=(True, False),
+            options=("outline by material", "outline by cell", "no outline"),
             index=0,
             key="outline",
-            help="Allows an outline to be drawn around the cells or materials, select None for no outline",
+            help="Draw outlines around material boundaries, cell boundaries, or no outlines",
         )
         
         show_overlaps = st.sidebar.selectbox(
