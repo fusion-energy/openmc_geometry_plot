@@ -5,6 +5,59 @@ from pathlib import Path
 import math
 import warnings
 import plotly.graph_objects as go
+import hashlib
+import json
+
+
+# Cache for id_map results to avoid redundant expensive calls
+_id_map_cache = {}
+
+# Cache for hovertext to avoid regenerating on every plot update
+_hovertext_cache = {}
+
+
+def _get_cache_key(geometry, materials, origin, width, pixels, basis, show_overlaps):
+    """Generate a cache key for id_map parameters.
+    
+    Uses content-based hashing instead of object IDs to avoid cache misses
+    when geometry/materials objects are recreated with same content.
+    """
+    # Create a content-based hash for geometry
+    # Use the geometry's XML representation or bounding box + cell/material counts
+    try:
+        geom_key_parts = [
+            str(geometry.bounding_box),
+            str(len(geometry.get_all_cells())),
+            str(len(geometry.get_all_materials())),
+            str(sorted(geometry.get_all_cells().keys())),
+            str(sorted(geometry.get_all_materials().keys())),
+        ]
+        geom_hash = hashlib.md5(''.join(geom_key_parts).encode()).hexdigest()
+    except:
+        # Fallback to object ID if we can't get content
+        geom_hash = str(id(geometry))
+    
+    # Create a content-based hash for materials
+    try:
+        mat_ids = sorted([m.id for m in materials])
+        mat_hash = hashlib.md5(str(mat_ids).encode()).hexdigest()
+    except:
+        mat_hash = str(id(materials))
+    
+    # Serialize other parameters
+    params = {
+        'geom_hash': geom_hash,
+        'mat_hash': mat_hash,
+        'origin': tuple(origin),
+        'width': tuple(width),
+        'pixels': pixels if isinstance(pixels, int) else tuple(pixels),
+        'basis': basis,
+        'show_overlaps': show_overlaps
+    }
+    
+    # Create hash from parameters
+    cache_key = hashlib.md5(json.dumps(params, sort_keys=True).encode()).hexdigest()
+    return cache_key
 
 
 def get_rgb_from_int(value: int) -> typing.Tuple[int, int, int]:
@@ -146,6 +199,97 @@ def get_dagmc_universe(self):
             return univ
 
 
+def get_id_map_cached(
+    geometry,
+    materials,
+    origin,
+    width,
+    pixels,
+    basis,
+    show_overlaps
+):
+    """Cached wrapper for model.id_map to avoid redundant expensive calls.
+    
+    This function will only recompute if any of the parameters change.
+    """
+    import time
+    start_time = time.time()
+    
+    # Check cache first
+    cache_key = _get_cache_key(geometry, materials, origin, width, pixels, basis, show_overlaps)
+    
+    if cache_key in _id_map_cache:
+        elapsed = time.time() - start_time
+        print(f"✓ Using cached ID map (cache key: {cache_key[:8]}...) - {elapsed:.3f}s")
+        return _id_map_cache[cache_key]
+    
+    print(f"⚙ Computing new ID map (cache key: {cache_key[:8]}...)")
+    compute_start = time.time()
+    
+    # Use model.id_map() to get ID data directly (no file I/O needed!)
+    model = openmc.Model(geometry=geometry, materials=materials)
+
+    # Handle materials without nuclides
+    all_materials = geometry.get_all_materials()
+    materials_to_restore = {}
+    for mat_id, mat in all_materials.items():
+        if len(mat.nuclides) == 0 and mat._macroscopic is None:
+            materials_to_restore[mat_id] = mat.nuclides.copy()
+            mat.add_nuclide("He4", 1.0)
+
+    # Set up minimal cross sections if not already configured
+    original_cross_sections = None
+    if 'cross_sections' not in openmc.config.keys():
+        package_dir = Path(__file__).parent
+        openmc.config["cross_sections"] = package_dir / "cross_sections.xml"
+    else:
+        original_cross_sections = openmc.config["cross_sections"]
+
+    try:
+        # Get ID map directly from OpenMC
+        print(f"  → Calling model.id_map()...")
+        idmap_start = time.time()
+        id_map = model.id_map(
+            origin=origin,
+            width=width,
+            pixels=pixels,
+            basis=basis,
+            color_overlaps=show_overlaps,  # enables id_map to return -3 for overlaps
+        )
+        idmap_elapsed = time.time() - idmap_start
+        print(f"  → model.id_map() completed in {idmap_elapsed:.3f}s")
+        
+        # Store in cache before returning
+        _id_map_cache[cache_key] = id_map
+        
+        # Limit cache size to prevent memory issues (keep last 10 results)
+        if len(_id_map_cache) > 10:
+            # Remove oldest entry
+            oldest_key = next(iter(_id_map_cache))
+            del _id_map_cache[oldest_key]
+        
+        total_elapsed = time.time() - start_time
+        print(f"✓ ID map computed and cached - total {total_elapsed:.3f}s")
+        return id_map
+
+    finally:
+        # Finalize OpenMC library to clean up resources
+        try:
+            from openmc import lib as openmc_lib
+            if openmc_lib.is_initialized:
+                openmc_lib.finalize()
+        except (ImportError, AttributeError):
+            pass
+
+        # Restore original materials
+        for mat_id in materials_to_restore:
+            all_materials[mat_id].nuclides.clear()
+
+        # Restore original cross sections config
+        if original_cross_sections is not None:
+            openmc.config["cross_sections"] = original_cross_sections
+
+
 def plot_plotly(
     geometry,
     materials,
@@ -231,6 +375,9 @@ def plot_plotly(
 
         """
 
+        import time
+        plot_start = time.time()
+        print(f"📊 Starting plot_plotly() - legend={legend}, color_by={color_by}")
 
         # Determine extents of plot
         if basis == 'xy':
@@ -275,66 +422,34 @@ def plot_plotly(
         y_min = (origin[y] - 0.5*width[1]) * axis_scaling_factor[axis_units]
         y_max = (origin[y] + 0.5*width[1]) * axis_scaling_factor[axis_units]
 
-        # Use model.id_map() to get ID data directly (no file I/O needed!)
-        model = openmc.Model(geometry=geometry, materials=materials)
+        # Get ID map using cached function to avoid redundant expensive calls
+        idmap_fetch_start = time.time()
+        id_map = get_id_map_cached(
+            geometry=geometry,
+            materials=materials,
+            origin=origin,
+            width=width,
+            pixels=pixels,
+            basis=basis,
+            show_overlaps=show_overlaps
+        )
+        idmap_fetch_time = time.time() - idmap_fetch_start
+        print(f"  → ID map fetch took {idmap_fetch_time:.3f}s")
 
-        # Handle materials without nuclides
-        all_materials = geometry.get_all_materials()
-        materials_to_restore = {}
-        for mat_id, mat in all_materials.items():
-            if len(mat.nuclides) == 0 and mat._macroscopic is None:
-                materials_to_restore[mat_id] = mat.nuclides.copy()
-                mat.add_nuclide("He4", 1.0)
+        # Extract the appropriate IDs based on color_by parameter
+        if color_by == 'material':
+            image_values = id_map[:, :, 2]  # Material IDs
+        else:  # color_by == 'cell'
+            image_values = id_map[:, :, 0]  # Cell IDs
 
-        # Set up minimal cross sections if not already configured
-        original_cross_sections = None
-        if 'cross_sections' not in openmc.config.keys():
-            package_dir = Path(__file__).parent
-            openmc.config["cross_sections"] = package_dir / "cross_sections.xml"
+        # Handle overlaps (-3) and convert other negative IDs (void/undefined) to 0
+        # We use -3 as a special marker for overlaps that will be colored separately
+        if show_overlaps:
+            # Keep -3 for overlaps, convert other negative values to 0
+            image_values = np.where((image_values < 0) & (image_values != -3), 0, image_values)
         else:
-            original_cross_sections = openmc.config["cross_sections"]
-
-        try:
-            # Get ID map directly from OpenMC
-            id_map = model.id_map(
-                origin=origin,
-                width=width,
-                pixels=pixels,
-                basis=basis,
-                color_overlaps=show_overlaps,  # enables id_map to return -3 for overlaps
-            )
-
-            # Extract the appropriate IDs based on color_by parameter
-            if color_by == 'material':
-                image_values = id_map[:, :, 2]  # Material IDs
-            else:  # color_by == 'cell'
-                image_values = id_map[:, :, 0]  # Cell IDs
-
-            # Handle overlaps (-3) and convert other negative IDs (void/undefined) to 0
-            # We use -3 as a special marker for overlaps that will be colored separately
-            if show_overlaps:
-                # Keep -3 for overlaps, convert other negative values to 0
-                image_values = np.where((image_values < 0) & (image_values != -3), 0, image_values)
-            else:
-                # Convert all negative IDs to 0
-                image_values = np.where(image_values < 0, 0, image_values)
-
-        finally:
-            # Finalize OpenMC library to clean up resources
-            try:
-                from openmc import lib as openmc_lib
-                if openmc_lib.is_initialized:
-                    openmc_lib.finalize()
-            except (ImportError, AttributeError):
-                pass
-
-            # Restore original materials
-            for mat_id in materials_to_restore:
-                all_materials[mat_id].nuclides.clear()
-
-            # Restore original cross sections config
-            if original_cross_sections is not None:
-                openmc.config["cross_sections"] = original_cross_sections
+            # Convert all negative IDs to 0
+            image_values = np.where(image_values < 0, 0, image_values)
 
         # Flip image vertically for correct display orientation in Plotly
         # Plotly heatmap shows first row at bottom, but we want first row at top
@@ -358,6 +473,7 @@ def plot_plotly(
             )
 
         # Build discrete color scale for cell/material IDs
+        colorscale_start = time.time()
         # Handle empty colors dict (e.g., void-only geometry)
         if colors and len(colors) > 0:
             # Get all unique IDs from the image data
@@ -410,6 +526,7 @@ def plot_plotly(
             # Build a discrete colorscale
             # Give each ID an equal-width block in the colorscale for better visibility
             num_ids = len(all_ids)
+            num_ids_inv = 1.0 / num_ids  # Pre-compute to avoid division in loop
             dcolorsc = []
             tick_positions = []
             tick_labels = []
@@ -425,8 +542,8 @@ def plot_plotly(
                     color = id_to_color.get(original_id, 'rgb(128,128,128)')  # Gray for unmapped IDs
 
                 # Give each ID an equal fraction of the colorscale [0, 1]
-                block_start = i / num_ids
-                block_end = (i + 1) / num_ids
+                block_start = i * num_ids_inv
+                block_end = (i + 1) * num_ids_inv
                 
                 # Create discrete color blocks in normalized [0, 1] space
                 if i == 0:
@@ -475,57 +592,91 @@ def plot_plotly(
             cbar = dict(
                 title=f'{color_by.title()} IDs',
             )
+        
+        colorscale_time = time.time() - colorscale_start
+        print(f"  → Colorscale building took {colorscale_time:.3f}s")
 
         # Build comprehensive hover text with both cell and material info
-        all_cells = geometry.get_all_cells()
-        all_materials = geometry.get_all_materials()
+        hover_start = time.time()
+        
+        # Create a cache key for hovertext based on the id_map cache key
+        # Hovertext depends on: id_map data, show_overlaps, and cell/material names
+        idmap_cache_key = _get_cache_key(geometry, materials, origin, width, pixels, basis, show_overlaps)
+        hover_cache_key = f"{idmap_cache_key}_hover"
+        
+        if hover_cache_key in _hovertext_cache:
+            hovertext = _hovertext_cache[hover_cache_key]
+            hover_time = time.time() - hover_start
+            print(f"  → Using cached hovertext - {hover_time:.3f}s")
+        else:
+            all_cells = geometry.get_all_cells()
+            all_materials = geometry.get_all_materials()
 
-        hovertext = []
-        for row_idx, row in enumerate(image_values_flipped):
-            row_text = []
-            for col_idx, _ in enumerate(row):
-                # Account for the flip when accessing id_map
-                original_row_idx = image_values.shape[0] - 1 - row_idx
-                cell_id = int(id_map[original_row_idx, col_idx, 0])
-                mat_id = int(id_map[original_row_idx, col_idx, 2])
-
-                # Check for overlap first
-                if show_overlaps and (cell_id == -3 or mat_id == -3):
-                    row_text.append("OVERLAP DETECTED")
-                    continue
-
-                # Handle negative IDs (void)
-                if cell_id < 0:
-                    cell_id = 0
-                if mat_id < 0:
-                    mat_id = 0
-
-                # Build hover text
-                hover_parts = []
-
-                # Cell info
-                if cell_id == 0:
-                    hover_parts.append("Cell: void")
+            # Extract cell and material IDs from id_map (before any flipping)
+            cell_ids = id_map[:, :, 0].astype(int)
+            mat_ids = id_map[:, :, 2].astype(int)
+            
+            # Handle negative IDs (convert to 0 for void, except -3 for overlaps)
+            if show_overlaps:
+                cell_ids = np.where((cell_ids < 0) & (cell_ids != -3), 0, cell_ids)
+                mat_ids = np.where((mat_ids < 0) & (mat_ids != -3), 0, mat_ids)
+            else:
+                cell_ids = np.where(cell_ids < 0, 0, cell_ids)
+                mat_ids = np.where(mat_ids < 0, 0, mat_ids)
+            
+            # Pre-build lookup dictionaries for cell and material names
+            cell_name_lookup = {}
+            for cell_id, cell in all_cells.items():
+                if cell.name:
+                    cell_name_lookup[cell_id] = f"Cell: {cell_id} ({cell.name})"
                 else:
-                    cell = all_cells.get(cell_id)
-                    if cell and cell.name:
-                        hover_parts.append(f"Cell: {cell_id} ({cell.name})")
-                    else:
-                        hover_parts.append(f"Cell: {cell_id}")
-
-                # Material info
-                if mat_id == 0:
-                    hover_parts.append("Material: void")
+                    cell_name_lookup[cell_id] = f"Cell: {cell_id}"
+            cell_name_lookup[0] = "Cell: void"
+            cell_name_lookup[-3] = "OVERLAP DETECTED"
+            
+            mat_name_lookup = {}
+            for mat_id, mat in all_materials.items():
+                if mat.name:
+                    mat_name_lookup[mat_id] = f"Material: {mat_id} ({mat.name})"
                 else:
-                    mat = all_materials.get(mat_id)
-                    if mat and mat.name:
-                        hover_parts.append(f"Material: {mat_id} ({mat.name})")
+                    mat_name_lookup[mat_id] = f"Material: {mat_id}"
+            mat_name_lookup[0] = "Material: void"
+            
+            # Vectorized hovertext generation
+            # Flip the ID arrays to match the display orientation
+            cell_ids_flipped = np.flipud(cell_ids)
+            mat_ids_flipped = np.flipud(mat_ids)
+            
+            # Build hovertext array
+            hovertext = []
+            for row_idx in range(cell_ids_flipped.shape[0]):
+                row_text = []
+                for col_idx in range(cell_ids_flipped.shape[1]):
+                    cell_id = cell_ids_flipped[row_idx, col_idx]
+                    mat_id = mat_ids_flipped[row_idx, col_idx]
+                    
+                    # Check for overlap first
+                    if show_overlaps and (cell_id == -3 or mat_id == -3):
+                        row_text.append("OVERLAP DETECTED")
                     else:
-                        hover_parts.append(f"Material: {mat_id}")
+                        # Use lookup dictionaries for fast access
+                        cell_text = cell_name_lookup.get(cell_id, f"Cell: {cell_id}")
+                        mat_text = mat_name_lookup.get(mat_id, f"Material: {mat_id}")
+                        row_text.append(f"{cell_text}<br>{mat_text}")
+                hovertext.append(row_text)
+            
+            # Cache the hovertext
+            _hovertext_cache[hover_cache_key] = hovertext
+            
+            # Limit cache size
+            if len(_hovertext_cache) > 10:
+                oldest_key = next(iter(_hovertext_cache))
+                del _hovertext_cache[oldest_key]
+            
+            hover_time = time.time() - hover_start
+            print(f"  → Hovertext generated and cached - {hover_time:.3f}s ({cell_ids.shape[0]}x{cell_ids.shape[1]} pixels)")
 
-                row_text.append("<br>".join(hover_parts))
-            hovertext.append(row_text)
-
+        plotly_build_start = time.time()
         data.append(
             go.Heatmap(
                 z=image_values_flipped,
@@ -544,6 +695,9 @@ def plot_plotly(
         )
 
         plot = go.Figure(data=data)
+        
+        plotly_build_time = time.time() - plotly_build_start
+        print(f"  → Plotly figure creation took {plotly_build_time:.3f}s")
 
         plot.update_layout(
             xaxis={"title": xlabel, "showgrid": False, "zeroline": False},
@@ -559,6 +713,8 @@ def plot_plotly(
             scaleratio=1,
         )
 
+        total_plot_time = time.time() - plot_start
+        print(f"✓ plot_plotly() completed in {total_plot_time:.3f}s")
         return plot
 
 
